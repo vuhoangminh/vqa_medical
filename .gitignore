@@ -1,3 +1,15 @@
+*.jpeg
+*.jpg
+*.csv
+*.json
+*.zip
+*.txt
+*.tar
+*.pickle
+*.hdf5
+!*.py
+!*.ipynb
+
 # Windows thumbnail cache files
 Thumbs.db
 ehthumbs.db
