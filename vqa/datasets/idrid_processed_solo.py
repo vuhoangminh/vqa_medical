@@ -273,7 +273,7 @@ if __name__ == "__main__":
         help='Root directory containing raw, interim and processed directories'
     )
     parser.add_argument('--trainsplit',
-        default='trainval',
+        default='train',
         type=str,
         help='Options: train | trainval'
     )
