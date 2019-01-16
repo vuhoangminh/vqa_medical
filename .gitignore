@@ -7,8 +7,10 @@
 *.tar
 *.pickle
 *.hdf5
-!*.py
-!*.ipynb
+*.xml
+*.DS_Store
+*.pyc
+
 
 # Windows thumbnail cache files
 Thumbs.db
