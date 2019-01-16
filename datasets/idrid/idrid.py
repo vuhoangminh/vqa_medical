@@ -5,9 +5,8 @@ import h5py
 import torch.utils.data as data
 import torchvision.transforms as transforms
 
-from ..lib import utils
-from .images import ImagesFolder, AbstractImagesDataset, default_loader
-from .features import FeaturesDataset
+from datasets.utils.images import ImagesFolder, AbstractImagesDataset, default_loader
+from datasets.utils.features import FeaturesDataset
 
 def split_name(data_split):
     if data_split in ['train', 'val']:

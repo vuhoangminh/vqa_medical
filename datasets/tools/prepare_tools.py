@@ -1,6 +1,11 @@
 import os
 import pandas as pd
 from xml.dom import minidom
+from datasets.utils.images import is_image_file
+
+QUESTION_LIST=[
+    
+]
 
 def get_project_dir(path, project_name):
     paths = path.split(project_name)
@@ -32,7 +37,7 @@ def get_bndbox_xml(item):
 
 CURRENT_WORKING_DIR = os.path.realpath(__file__)
 PROJECT_DIR = get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
-DATASETS_DIR = PROJECT_DIR + "/datasets/m2cai16-tool-locations/Annotations/"
+DATASETS_DIR = PROJECT_DIR + "/data/raw/m2cai16-tool-locations/Annotations/"
 filename = "v08_012825.xml"
 path_xml = DATASETS_DIR + filename
 
