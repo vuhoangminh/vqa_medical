@@ -4,7 +4,7 @@ import pandas as pd
 from collections import OrderedDict
 from xml.dom import minidom
 from datasets.utils.images import is_image_file
-import datasets.utils.qa_utils as qa_utils
+import datasets.utils.tools_qa_utils as qa_utils
 import datasets.utils.paths_utils as path_utils
 import datasets.utils.xml_utils as xml_utils
 
@@ -77,63 +77,31 @@ def add_case(path_case, image_id):
     return cols, rows
 
 
-def build_df():
-    cols = ['file_id', 'image_id']
-    q_full = list()
-    a_full = list()
-
-    return 0
-
-
-def test(path_xml):
-    mydoc = minidom.parse(path_xml)
-
-    value = xml_utils.get_data_xml(mydoc, "filename")
-    print(value)
-
-    boxes = xml_utils.get_object_xml(mydoc)
-    print(qa_utils.get_ans_how_many_tools(boxes))
-    print(qa_utils.get_ans_major_tool(boxes))
-    print(qa_utils.get_ans_minor_tool(boxes))
-
-    list_tools = list_tool, list_tool
-    q, combinations = qa_utils.generate_ques_is_x_larger_or_smaller_than_y(
-        list_tools, data="bounding box")
-    a = qa_utils.get_ans_is_x_larger_or_smaller_than_y(combinations, boxes)
-
-    q, encoded_locations = qa_utils.generate_ques_is_x_in_z(
-        list_tool, (596, 334))
-    a = qa_utils.get_ans_is_x_in_z(list_tool, encoded_locations, boxes)
-    print(a.count('yes'))
-    print(a.count('no'))
-
-    b = 2
-
-
 def main():
     paths = glob.glob(DATASETS_DIR + "*.xml")
     rows = list()
-    rows_temp = list()  
+    rows_temp = list()
     for index, path in enumerate(paths):
         # if index<100:
         print(">> processing {}/{}".format(index+1, len(paths)))
         col, row = add_case(path, str(index).zfill(5))
         rows_temp.append(row)
-        if index%20==0 and index>0:
+        if index % 20 == 0 and index > 0:
             rows.extend(rows_temp)
-            rows_temp = list()  
-    if len(rows_temp)>0:
+            rows_temp = list()
+    if len(rows_temp) > 0:
         rows.extend(rows_temp)
-    
+
     rows = list(map(list, zip(*rows)))
     # dictionary = dict(zip(col, rows))
     dictionary = OrderedDict(zip(col, rows))
 
     df = pd.DataFrame.from_dict(dictionary)
-    
+
     save_dir = RAW_DIR + "tools_qa_full.csv"
     df.to_csv(save_dir)
     print(df)
+
 
 if __name__ == "__main__":
     main()
