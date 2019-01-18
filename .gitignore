@@ -15,6 +15,7 @@
 *.npy
 *.DS_Store
 *.pyc
+!requirements.txt
 
 
 # Windows thumbnail cache files
