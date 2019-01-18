@@ -8,6 +8,11 @@
 *.pickle
 *.hdf5
 *.xml
+*.png
+*.xlsx
+*.tif
+*.svs
+*.npy
 *.DS_Store
 *.pyc
 
