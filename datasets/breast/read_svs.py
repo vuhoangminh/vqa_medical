@@ -5,12 +5,15 @@ ICIAR2018 - Grand Challenge on Breast Cancer Histology Images
 https://iciar2018-challenge.grand-challenge.org/home/
 """
 
+import os
+OPENSLIDE_PATH = "C:/Users/minhm/Documents/GitHub/bin/openslide-win64-20171122/bin"
+if os.path.exists(OPENSLIDE_PATH):
+    os.environ['PATH'] = OPENSLIDE_PATH + ";" + os.environ['PATH']
 import openslide
 from matplotlib import pyplot as plt
 from scipy.misc import imsave, imresize
 from openslide import open_slide # http://openslide.org/api/python/
 import numpy as np
-import os
 
 
 save = True

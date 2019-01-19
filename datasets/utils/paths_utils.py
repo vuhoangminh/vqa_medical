@@ -21,3 +21,7 @@ def get_filename(path):
 def get_filename_without_extension(path):
     filename = get_filename(path)
     return os.path.splitext(filename)[0]
+
+
+def get_parent_dir(path):
+    return os.path.abspath(os.path.join(path, os.pardir))
