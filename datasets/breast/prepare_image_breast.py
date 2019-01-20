@@ -10,8 +10,8 @@ import numpy as np
 import pandas as pd
 import glob
 from scipy.misc import imsave, imresize
+from scipy.misc import toimage
 import os
-from scipy.misc import imresize
 OPENSLIDE_PATH = "C:/Users/minhm/Documents/GitHub/bin/openslide-win64-20171122/bin"
 if os.path.exists(OPENSLIDE_PATH):
     os.environ['PATH'] = OPENSLIDE_PATH + ";" + os.environ['PATH']
@@ -101,10 +101,11 @@ def process_one_svs_one_xml(filename, img_svs, gt, upsampling_factor=4, is_debug
         print(">> processing {}/{}".format(i+1, len(patch_indices)))
         outname = "{}_idx-{}-{}_ps-{}-{}".format(filename, str(patch_indices[i][0]), str(
             patch_indices[i][1]), str(patch_size_img[0]), str(patch_size_img[1]))
-        patch_save_dir = PREPROCESSED_IMAGE_WSI_PATCH_DIR + outname + ".jpg"
-        gt_save_dir = PREPROCESSED_IMAGE_WSI_GT_DIR + outname + ".jpg"
+        patch_save_dir = PREPROCESSED_IMAGE_WSI_PATCH_DIR + outname + ".png"
+        gt_save_dir = PREPROCESSED_IMAGE_WSI_GT_DIR + outname + ".png"
 
         if not os.path.exists(patch_save_dir) or not os.path.exists(gt_save_dir):
+        # if "A01_idx-12864-14928_ps-16384-16384" in gt_save_dir:
 
             patch_extracted = image_utils.get_patch_from_3d_data(
                 img_svs, patch_shape=patch_size_img, patch_index=patch_indices[i])
@@ -120,15 +121,20 @@ def process_one_svs_one_xml(filename, img_svs, gt, upsampling_factor=4, is_debug
             # if np.count_nonzero(gt_extracted_resized)>256*256/8:
             gt_extracted_resized = image_utils.convert_gray_to_rgb(
                 gt_extracted_resized)
-            try:
-                patch_extracted_resized = normalization_utils.normalize_staining(patch_extracted_resized)
-            except:
-                pass
+            # try:
+            #     patch_extracted_resized = normalization_utils.normalize_staining(patch_extracted_resized)
+            # except:
+            #     pass
 
             print(">> saving images...")
-            imsave(gt_save_dir, gt_extracted_resized)
-            imsave(patch_save_dir, patch_extracted_resized)
-            
+            # imsave(gt_save_dir, gt_extracted_resized)
+            # imsave(patch_save_dir, patch_extracted_resized)
+            gt_extracted_resized = Image.fromarray(gt_extracted_resized.astype(np.uint8))
+            gt_extracted_resized.save(gt_save_dir, format="PNG")
+            patch_extracted_resized = Image.fromarray(patch_extracted_resized.astype(np.uint8))
+            patch_extracted_resized.save(patch_save_dir, format="PNG")
+
+
             if is_debug:
                 im = Image.fromarray(gt_extracted_resized)
                 im.show()
@@ -148,7 +154,7 @@ def prepare_question_model(is_save=False):
 
         # read svs
         img_svs = svs_utils.read_svs(
-            img_dir, patch_size=patch_size, is_save=False)
+            img_dir, patch_size=patch_size, is_save=True)
 
         # read xml
         coords, labels, length, area, pixel_spacing = xml_utils.read_xml_breast(
