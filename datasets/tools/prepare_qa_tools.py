@@ -29,10 +29,26 @@ list_tool = [x.lower() for x in list_tool]
 list_tools = list_tool, list_tool
 
 
+def fix_bb_coordinates_after_resize(boxes, old_shape, new_shape):
+    new_boxes = list()
+    for box in boxes:
+        object_name, xmin, xmax, ymin, ymax = box
+        Rx, Ry = new_shape[0]/old_shape[0], new_shape[1]/old_shape[1]
+        new_xmin, new_xmax, new_ymin, new_ymax = round(xmin*Rx), round(xmax*Rx), round(ymin*Ry), round(ymax*Ry)
+        new_boxes.append([object_name, new_xmin, new_xmax, new_ymin, new_ymax])
+    return new_boxes
+
+
+
 def add_case(path_case, image_id):
     mydoc = minidom.parse(path_case)
     file_id = xml_utils.get_data_xml(mydoc, "filename")
     boxes = xml_utils.get_object_xml(mydoc)
+
+    width, height = xml_utils.get_size_image_xml(mydoc)
+
+    boxes = fix_bb_coordinates_after_resize(boxes, (width, height), (256, 256))
+
 
     cols = ['file_id', 'image_id']
     rows = [file_id, image_id]
@@ -60,7 +76,7 @@ def add_case(path_case, image_id):
 
     # is x larger/smaller than y?
     q, encoded_locations = qa_utils.generate_ques_is_x_in_z(
-        list_tool, (596, 334))
+        list_tool, (256, 256))
     a = qa_utils.get_ans_is_x_in_z(list_tool, encoded_locations, boxes)
     q_row.extend(q)
     a_row.extend(a)

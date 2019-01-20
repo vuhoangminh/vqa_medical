@@ -6,6 +6,9 @@ path = "C:/Users/minhm/Documents/GitHub/vqa_idrid/data/raw/breast-cancer/ICIAR20
 
 path = "C:/Users/minhm/Documents/GitHub/kaggle_whale/dataset/samples/"
 
+path = "C:/Users/minhm/Documents/GitHub/vqa_idrid/data/raw/m2cai16-tool-locations/JPEGImages/"
+
+
 def test(path_in):
 
     im = Image.open(path_in)
@@ -22,6 +25,6 @@ def test(path_in):
     im_norm.show()
 
 
-for img in ["0000e88ab", "0001f9222", "0005c1ef8", "00029d126", "00050a15a"]:
+for img in ["v01_002075", "v02_042400_flip"]:
     path_in = path + img + ".jpg"
     test(path_in)

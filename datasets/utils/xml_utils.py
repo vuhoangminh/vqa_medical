@@ -16,6 +16,13 @@ def get_object_xml(mydoc):
     return boxes
 
 
+def get_size_image_xml(mydoc):
+    item = mydoc.getElementsByTagName("size")[0]
+    width = int(get_data_xml(item, "width"))
+    height = int(get_data_xml(item, "height"))
+    return width, height
+
+
 def get_bndbox_xml(item):
     object_name = get_data_xml(item, "name").lower()
     object_box = item.getElementsByTagName("bndbox")[0]
