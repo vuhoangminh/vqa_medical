@@ -3,6 +3,40 @@ from itertools import product
 import numpy as np
 
 
+DICT_CLASS = {
+    0: "normal",
+    1: "benign",
+    2: "in situ",
+    3: "invasive"
+}
+
+
+def get_count_from_class_number(number, unique_elements, counts_elements):
+    index = np.where(unique_elements == number)
+    if index[0].size == 0:
+        return 0
+    else:
+        return counts_elements[index]
+
+
+def get_name_class_from_number(number, dict_class):
+    return dict_class[number]
+
+
+'''
+Get a list of keys from dictionary which has value that matches with any value in given list of values
+'''
+
+
+def get_number_from_name_class(values, dict_class):
+    keys = list()
+    items = dict_class.items()
+    for item in items:
+        if item[1] in values:
+            keys.append(item[0])
+    return keys
+
+
 def find_all_combination_of_two_lists(list1, is_unique=True):
     if is_unique:
         return [(x, y) for x, y in product(*list1) if x != y]
@@ -16,44 +50,68 @@ def generate_ques_how_many_classes():
 
 def get_ans_how_many_classes(gt):
     unique_classes = np.unique(gt)
-    unique_classes_without_normal = [x for x in unique_classes if x>0]
+    return len(unique_classes)
+
+
+def generate_ques_how_many_tumor_classes():
+    return "how many tumor classes are there?"
+
+
+def get_ans_how_many_tumor_classes(gt):
+    unique_classes = np.unique(gt)
+    unique_classes_without_normal = [x for x in unique_classes if x > 0]
     return len(unique_classes_without_normal)
 
 
 def generate_ques_major_class():
-    return "what is the major tool in the image?"
+    return "what is the major class in the image?"
 
 
-def compute_area_bb_tool(xmin1, xmax1, ymin1, ymax1):
-    return (xmax1-xmin1)*(ymax1-ymin1)
+def get_ans_major_class(gt, dict_class):
+    unique_elements, counts_elements = np.unique(gt, return_counts=True)
+    return get_name_class_from_number(unique_elements[np.argmax(counts_elements)], dict_class)
 
 
-def get_ans_major_tool(boxes):
-    if len(boxes) == 1:
-        return boxes[0][0].lower()
-    if len(boxes) > 1:
-        areas = list()
-        for i in range(len(boxes)):
-            tool, xmin1, xmax1, ymin1, ymax1 = boxes[i]
-            areas.append(compute_area_bb_tool(xmin1, xmax1, ymin1, ymax1))
-        index_max_area = areas.index(max(areas))
-        return boxes[index_max_area][0].lower()
+def generate_ques_minor_class():
+    return "what is the minor class in the image?"
 
 
-def generate_ques_minor_tool():
-    return "what is the minor tool in the image?"
-
-
-def get_ans_minor_tool(boxes):
-    if len(boxes) == 1:
+def get_ans_minor_class(gt, dict_class):
+    unique_elements, counts_elements = np.unique(gt, return_counts=True)
+    if unique_elements.size == 1:
         return "na"
-    if len(boxes) > 1:
-        areas = list()
-        for i in range(len(boxes)):
-            tool, xmin1, xmax1, ymin1, ymax1 = boxes[i]
-            areas.append(compute_area_bb_tool(xmin1, xmax1, ymin1, ymax1))
-        index_min_area = areas.index(min(areas))
-        return boxes[index_min_area][0].lower()
+    else:
+        return get_name_class_from_number(unique_elements[np.argmin(counts_elements)], dict_class)
+
+
+def generate_ques_major_tumor():
+    return "what is the major tumor in the image?"
+
+
+def get_ans_major_tumor(gt, dict_class):
+    unique_elements, counts_elements = np.unique(gt, return_counts=True)
+    index_normal = np.where(unique_elements == 0)
+    unique_elements = np.delete(unique_elements, index_normal)
+    counts_elements = np.delete(counts_elements, index_normal)
+    if unique_elements.size >= 1:
+        return get_name_class_from_number(unique_elements[np.argmax(counts_elements)], dict_class)
+    else:
+        return "na"
+
+
+def generate_ques_minor_tumor():
+    return "what is the minor class in the image?"
+
+
+def get_ans_minor_tumor(gt, dict_class):
+    unique_elements, counts_elements = np.unique(gt, return_counts=True)
+    index_normal = np.where(unique_elements == 0)
+    unique_elements = np.delete(unique_elements, index_normal)
+    counts_elements = np.delete(counts_elements, index_normal)
+    if unique_elements.size > 1:
+        return get_name_class_from_number(unique_elements[np.argmin(counts_elements)], dict_class)
+    else:
+        return "na"
 
 
 def generate_ques_is_x_larger_or_smaller_than_y(x, data=""):
@@ -75,26 +133,33 @@ def generate_ques_is_x_larger_or_smaller_than_y(x, data=""):
     return q, combinations
 
 
-def get_one_ans_is_x_larger_than_y(combination, boxes):
-    major_tool = get_ans_major_tool(boxes)
-    minor_tool = get_ans_minor_tool(boxes)
+def get_one_ans_is_x_larger_than_y(combination, gt, dict_class):
+    unique_elements, counts_elements = np.unique(gt, return_counts=True)
     t1 = combination[0]
     t2 = combination[1]
-    if major_tool == t1 and minor_tool == t2:
+    t1 = get_number_from_name_class(t1, dict_class)
+    t2 = get_number_from_name_class(t2, dict_class)
+
+    n1 = get_count_from_class_number(t1, unique_elements, counts_elements)
+    n2 = get_count_from_class_number(t2, unique_elements, counts_elements)
+
+    if n1 > n2:
         return "yes"
-    elif major_tool == t2 and minor_tool == t1:
+    elif n2 > n1:
+        return "no"
+    elif n1 == n2 and n1 > 0:
         return "no"
     else:
         return "na"
 
 
-def get_ans_is_x_larger_or_smaller_than_y(combinations, boxes):
+def get_ans_is_x_larger_or_smaller_than_y(combinations, gt, dict_class):
     a = list()
     for i in range(len(combinations)):
         t1 = combinations[i][0]
         t2 = combinations[i][1]
-        ans_larger = get_one_ans_is_x_larger_than_y([t1, t2], boxes)
-        ans_smaller = get_one_ans_is_x_larger_than_y([t2, t1], boxes)
+        ans_larger = get_one_ans_is_x_larger_than_y([t1, t2], gt, dict_class)
+        ans_smaller = get_one_ans_is_x_larger_than_y([t2, t1], gt, dict_class)
         a.append(ans_larger)
         a.append(ans_smaller)
     return a
@@ -103,43 +168,24 @@ def get_ans_is_x_larger_or_smaller_than_y(combinations, boxes):
 def generate_ques_is_there_any_x(x):
     q = list()
     for i in range(len(x)):
-        ques = "is there any {} in the image?".format(x[i])
+        ques = "is there any {} class in the image?".format(x[i])
         q.append(ques.lower())
     return q
 
 
-def get_ans_is_there_any_x(x, boxes):
-    major_tool = get_ans_major_tool(boxes)
-    minor_tool = get_ans_minor_tool(boxes)
+def get_ans_is_there_any_x(x, gt, dict_class):
     a = list()
+    unique_elements, counts_elements = np.unique(gt, return_counts=True)
     for i in range(len(x)):
-        if major_tool == x[i] or minor_tool == x[i]:
+        t = get_number_from_name_class(x[i], dict_class)
+        n = get_count_from_class_number(t, unique_elements, counts_elements)
+
+        if n > 0:
             a.append("yes")
         else:
             a.append("no")
+
     return a
-
-
-def is_two_boxes_overlap(box1, box2):
-    # input:
-    # 1D
-    # box1 = (xmin1, xmax1)
-    # box2 = (xmin2, xmax2)
-    # 2D
-    # box1 = (x:(xmin1,xmax1),y:(ymin1,ymax1))
-    # box2 = (x:(xmin2,xmax2),y:(ymin2,ymax2))
-    # 3D
-    # box1 = (x:(xmin1,xmax1),y:(ymin1,ymax1),z:(zmin1,zmax1))
-    # box2 = (x:(xmin2,xmax2),y:(ymin2,ymax2),z:(zmin2,zmax2))
-    def overlapping1D(xmin1, xmax1, xmin2, xmax2):
-        return xmax1 >= xmin2 and xmax2 >= xmin1
-
-    def overlapping2D(box1, box2):
-        xmin1, xmax1, ymin1, ymax1 = box1
-        xmin2, xmax2, ymin2, ymax2 = box2
-        return overlapping1D(xmin1, xmax1, xmin2, xmax2) and overlapping1D(ymin1, ymax1, ymin2, ymax2)
-
-    return overlapping2D(box1, box2)
 
 
 def generate_encoded_box_location(image_shape, box_size=32):
@@ -173,16 +219,28 @@ def generate_ques_is_x_in_z(x, image_shape):
     return q, encoded_locations
 
 
-def get_ans_is_x_in_z(x, encoded_locations, boxes):
+def get_ans_is_x_in_z(x, encoded_locations, gt, dict_class):
     a = list()
     for i in range(len(encoded_locations)):
         for j in range(len(x)):
-            tool = x[j]
+            t = get_number_from_name_class(x[j], dict_class)
             decoded_location = decode_encoded_location(encoded_locations[i])
-            ans = "no"
-            for k in range(len(boxes)):
-                tool_box, xmin1, xmax1, ymin1, ymax1 = boxes[k]
-                if tool == tool_box and is_two_boxes_overlap(decoded_location, [xmin1, xmax1, ymin1, ymax1]):
-                    ans = "yes"
-            a.append(ans.lower())
+            xmin1, xmax1, ymin1, ymax1 = decoded_location
+            gt_extracted = gt[xmin1:xmax1, ymin1:ymax1]
+            index = np.where(gt_extracted == t)
+            if index[0].size == 0:
+                a.append("no")
+            else:
+                a.append("yes")
     return a
+
+
+def generate_ques_which_patient():
+    return "which patient is it?"
+
+
+def get_ans_which_patient(filename):
+    for i in range(10):
+        patient = "A{}".format(str(i+1).zfill(2))
+        if patient in filename:
+            return patient
