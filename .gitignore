@@ -18,6 +18,10 @@
 !requirements.txt
 !breast_qa_full.csv
 !tools_qa_full.csv
+!image_*.txt
+!train.txt
+!val.txt
+
 
 # Windows thumbnail cache files
 Thumbs.db

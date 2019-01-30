@@ -112,35 +112,87 @@ def split_images_for_image_model_and_vqa(N=100, P=0.6):
 
     rows = list()
     rows_temp = list()
-    count_dict_tool_multi = dict(zip(list_tool, [0] * 7))
+    count_dict_tool_multi = dict(zip(list_tool, [0] * len(list_tool)))
+    classification_dict_tool = {k: [] for k in list_tool}
+    segmentation_dict_tool = {k: [] for k in ["train", "val"]}
     count_train_images_segmentation = 0
+
+    # list_image_grasper = list()
+    # list_image_biopolar = list()
+    # list_image_hook = list()
+    # list_image_scissors = list()
+    # list_image_clipper = list()
+    # list_image_irrigator = list()
+    # list_image_specimenbag = list()
+    # list_train = list()
+    # list_val = list()
+
     for index, path in enumerate(paths):
         filename = path_utils.get_filename_without_extension(path)
         print(">> processing {}/{}".format(index+1, len(paths)))
+        print(filename)
         mydoc = minidom.parse(path)
         boxes = xml_utils.get_object_xml(mydoc)
         for i in range(len(boxes)):
             tool, xmin, xmax, ymin, ymax = boxes[i]
             tool = tool.lower()
         if len(boxes)==1 and count_dict_tool_multi[tool] < N:
-            src = PREPROCESSED_IMAGE_DIR + filename + ".jpg"
-            dst_dir = CLASSIFICATION_IMAGE_DIR + tool
-            path_utils.make_dir(dst_dir)
-            dst = "{}/{}.jpg".format(dst_dir, filename)
-            shutil.copyfile(src, dst)
+            classification_dict_tool[tool].append(filename)
             count_dict_tool_multi[tool] += 1
             print(count_dict_tool_multi)
         else:
-            src = PREPROCESSED_IMAGE_DIR + filename + ".jpg"
             if count_train_images_segmentation < num_images_segmentation_train:
-                dst_dir = "{}{}".format(SEGMENTATION_IMAGE_DIR, "train")
-                path_utils.make_dir(dst_dir)
-                count_train_images_segmentation += 1
+                segmentation_dict_tool["train"].append(filename)
             else:
-                dst_dir = "{}{}".format(SEGMENTATION_IMAGE_DIR, "val")
-                path_utils.make_dir(dst_dir)
-            dst = "{}/{}.jpg".format(dst_dir, filename)
-            shutil.copyfile(src, dst)
+                segmentation_dict_tool["val"].append(filename)
+    
+
+    for tool in classification_dict_tool.keys():
+        my_list = classification_dict_tool[tool]
+        path_write = "{}image_{}.txt".format(IMAGE_SET_DIR, tool) 
+        write_list_to_file(my_list, path_write)
+
+    for dataset in segmentation_dict_tool.keys():
+        my_list = classification_dict_tool[tool]
+        path_write = "{}{}.txt".format(IMAGE_SET_DIR, dataset) 
+        write_list_to_file(my_list, path_write)
+
+
+def write_list_to_file(my_list, path):
+    with open(path, 'w+') as f:
+        for item in my_list:
+            f.write("%s\n" % item)
+
+
+# def move_files():
+#     for index, path in enumerate(paths):
+#         filename = path_utils.get_filename_without_extension(path)
+#         print(">> processing {}/{}".format(index+1, len(paths)))
+#         mydoc = minidom.parse(path)
+#         boxes = xml_utils.get_object_xml(mydoc)
+#         for i in range(len(boxes)):
+#             tool, xmin, xmax, ymin, ymax = boxes[i]
+#             tool = tool.lower()
+#         if len(boxes)==1 and count_dict_tool_multi[tool] < N:
+#             src = PREPROCESSED_IMAGE_DIR + filename + ".jpg"
+#             dst_dir = CLASSIFICATION_IMAGE_DIR + tool
+#             path_utils.make_dir(dst_dir)
+#             dst = "{}/{}.jpg".format(dst_dir, filename)
+#             shutil.copyfile(src, dst)
+#             count_dict_tool_multi[tool] += 1
+#             print(count_dict_tool_multi)
+#         else:
+#             src = PREPROCESSED_IMAGE_DIR + filename + ".jpg"
+#             if count_train_images_segmentation < num_images_segmentation_train:
+#                 dst_dir = "{}{}".format(SEGMENTATION_IMAGE_DIR, "train")
+#                 path_utils.make_dir(dst_dir)
+#                 count_train_images_segmentation += 1
+#             else:
+#                 dst_dir = "{}{}".format(SEGMENTATION_IMAGE_DIR, "val")
+#                 path_utils.make_dir(dst_dir)
+#             dst = "{}/{}.jpg".format(dst_dir, filename)
+#             shutil.copyfile(src, dst)
+
 
 def main():
     print_utils.print_section("image model")
