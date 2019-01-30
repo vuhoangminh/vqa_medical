@@ -55,10 +55,17 @@ def add_case(path_case, image_id):
 
     q_row = list()
     a_row = list()
+
     # add how many tools are there?
     q_row.append(qa_utils.generate_ques_how_many_tools())
     a_row.append(qa_utils.get_ans_how_many_tools(boxes))
 
+    # is there any x in?
+    q_row.extend(qa_utils.generate_ques_is_there_any_x(list_tool))
+    a_row.extend(qa_utils.get_ans_is_there_any_x(list_tool, boxes))
+
+    """
+    removed by R and T's suggestions     
     # what is the key tool?
     q_row.append(qa_utils.generate_ques_major_tool())
     a_row.append(qa_utils.get_ans_major_tool(boxes))
@@ -72,24 +79,27 @@ def add_case(path_case, image_id):
         list_tools, data="bounding box")
     a = qa_utils.get_ans_is_x_larger_or_smaller_than_y(combinations, boxes)
     q_row.extend(q)
-    a_row.extend(a)
+    a_row.extend(a) 
+    """
 
-    # is x larger/smaller than y?
+    # is x in z?
     q, encoded_locations = qa_utils.generate_ques_is_x_in_z(
         list_tool, (256, 256))
     a = qa_utils.get_ans_is_x_in_z(list_tool, encoded_locations, boxes)
     q_row.extend(q)
     a_row.extend(a)
 
+    # which tool having pointed tip position?
+    q = qa_utils.generate_ques_which_tool_pointed_tip_position()
+    a = qa_utils.get_ans_which_tool_pointed_tip_position(boxes)
+    q_row.extend(q)
+    a_row.extend(a)
+
+
     # extend cols rows
     cols.extend(q_row)
     rows.extend(a_row)
-    # rows = [[i] for i in rows]
-
-    # dictionary = dict(zip(cols, rows))
-    # dictionary = OrderedDict(zip(cols, rows))
-
-    # df = pd.DataFrame.from_dict(dictionary)
+    
     return cols, rows
 
 

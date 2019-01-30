@@ -183,3 +183,48 @@ def get_ans_is_x_in_z(x, encoded_locations, boxes):
                     ans = "yes"
             a.append(ans.lower())
     return a
+
+
+def get_tool_position(boxes):
+    areas = list()
+    keys = ["left", "right", "top", "bottom"]
+    values = list()
+
+    tool1, xmin1, xmax1, ymin1, ymax1 = boxes[0]
+    tool2, xmin2, xmax2, ymin2, ymax2 = boxes[1]
+
+    if (xmax1-xmin1)/2 <= (xmax2-xmin2)/2:
+        values.extend([tool1, tool2])
+    else:
+        values.extend([tool2, tool1])
+
+    if (ymax1-ymin1)/2 <= (ymax2-ymin2)/2:
+        values.extend([tool1, tool2])
+    else:
+        values.extend([tool2, tool1])
+
+    return dict(zip(keys, values))
+  
+
+def generate_ques_which_tool_pointed_tip_position():
+    q = list()
+    position_list = ["on the left", "on the right", "at the top", "at the bottom"]
+    for i in range(len(position_list)):
+        ques = "which tool having pointed tip {} of the image?".format(position_list[i])
+        q.append(ques.lower())
+    return q
+
+
+def get_ans_which_tool_pointed_tip_position(boxes):
+    num_tools = get_ans_how_many_tools(boxes)
+    a = list()
+    if num_tools == 1:
+        for i in range(4):
+            a.append("na")
+    else:
+        positions = get_tool_position(boxes)
+        a.append(positions.get("left", "na"))
+        a.append(positions.get("right", "na"))
+        a.append(positions.get("top", "na"))
+        a.append(positions.get("bottom", "na"))
+    return a
