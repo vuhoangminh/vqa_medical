@@ -254,7 +254,7 @@ def generate_ques_how_many_pixels_of_x(x):
     return q
 
 
-def get_ans_how_many_pixels_of_x(x, gt, dict_class, threshold):
+def get_ans_how_many_pixels_of_x(x, gt, dict_class):
     a = list()
     unique_elements, counts_elements = np.unique(gt, return_counts=True)
     for i in range(len(x)):
