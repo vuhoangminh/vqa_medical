@@ -51,9 +51,9 @@ def add_case(path_case, image_id):
     a_row = list()
 
 
-    # which patient?
-    q_row.append(qa_utils.generate_ques_which_patient())
-    a_row.append(qa_utils.get_ans_which_patient(path_case))
+    # which patient? - removed based on Tommy's suggestion
+    # q_row.append(qa_utils.generate_ques_which_patient())
+    # a_row.append(qa_utils.get_ans_which_patient(path_case))
 
     # add how many classes are there?
     q_row.append(qa_utils.generate_ques_how_many_classes())

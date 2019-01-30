@@ -244,3 +244,24 @@ def get_ans_which_patient(filename):
         patient = "A{}".format(str(i+1).zfill(2))
         if patient in filename:
             return patient
+
+
+def generate_ques_how_many_pixels_of_x(x):
+    q = list()
+    for i in range(len(x)):
+        ques = "how many percent of {} class in the image?".format(x[i])
+        q.append(ques.lower())
+    return q
+
+
+def get_ans_how_many_pixels_of_x(x, gt, dict_class, threshold):
+    a = list()
+    unique_elements, counts_elements = np.unique(gt, return_counts=True)
+    for i in range(len(x)):
+        t = get_number_from_name_class(x[i], dict_class)
+        n = get_count_from_class_number(t, unique_elements, counts_elements)
+        if type(n) is np.ndarray:
+            a.append(n[0])
+        else:
+            a.append(n)
+    return a

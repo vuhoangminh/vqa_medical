@@ -80,3 +80,7 @@ b = 2
 
 
 print(qa_utils.get_ans_which_patient(gt_path))
+
+
+print(qa_utils.generate_ques_how_many_pixels_of_x(list_class))
+print(qa_utils.get_ans_how_many_pixels_of_x(list_class, gt, DICT_CLASS, 0.1))

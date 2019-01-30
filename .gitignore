@@ -16,7 +16,8 @@
 *.DS_Store
 *.pyc
 !requirements.txt
-
+!breast_qa_full.csv
+!tools_qa_full.csv
 
 # Windows thumbnail cache files
 Thumbs.db
