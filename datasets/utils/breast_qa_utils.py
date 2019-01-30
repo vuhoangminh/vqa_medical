@@ -249,7 +249,7 @@ def get_ans_which_patient(filename):
 def generate_ques_how_many_pixels_of_x(x):
     q = list()
     for i in range(len(x)):
-        ques = "how many percent of {} class in the image?".format(x[i])
+        ques = "how many pixels of {} class in the image?".format(x[i])
         q.append(ques.lower())
     return q
 
@@ -261,7 +261,27 @@ def get_ans_how_many_pixels_of_x(x, gt, dict_class):
         t = get_number_from_name_class(x[i], dict_class)
         n = get_count_from_class_number(t, unique_elements, counts_elements)
         if type(n) is np.ndarray:
-            a.append(n[0])
+            n = n[0]
+        a.append(n)
+    return a
+
+def generate_ques_how_many_percent_of_x(x):
+    q = list()
+    for i in range(len(x)):
+        ques = "how many percentage of {} class in the image?".format(x[i])
+        q.append(ques.lower())
+    return q
+
+
+def get_ans_how_many_percent_of_x(x, gt, dict_class):
+    a = list()
+    unique_elements, counts_elements = np.unique(gt, return_counts=True)
+    for i in range(len(x)):
+        t = get_number_from_name_class(x[i], dict_class)
+        n = get_count_from_class_number(t, unique_elements, counts_elements)
+        if type(n) is np.ndarray:
+            n = int(round(n[0]/256/256)*100)
         else:
-            a.append(n)
+            n = int(round(n/256/256)*100)
+        a.append(n)
     return a

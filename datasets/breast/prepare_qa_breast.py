@@ -100,7 +100,13 @@ def add_case(path_case, image_id):
     a = qa_utils.get_ans_how_many_pixels_of_x(list_class, gt, DICT_CLASS)
     q_row.extend(q)
     a_row.extend(a)
-    
+
+    # add how many percent of x?
+    q = qa_utils.generate_ques_how_many_percent_of_x(list_class)
+    a = qa_utils.get_ans_how_many_percent_of_x(list_class, gt, DICT_CLASS)
+    q_row.extend(q)
+    a_row.extend(a)
+
     # extend cols rows
     cols.extend(q_row)
     rows.extend(a_row)
