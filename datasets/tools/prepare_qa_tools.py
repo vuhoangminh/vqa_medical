@@ -129,5 +129,30 @@ def main():
     print(df)
 
 
+def test():
+    paths = glob.glob(DATASETS_DIR + "*.xml")
+    rows = list()
+    rows_temp = list()
+    count_dict_tool = dict(zip(list_tool, [0] * 7))
+    count_dict_tool_multi = dict(zip(list_tool, [0] * 7))
+    count_multitool_per_frame = 0
+    for index, path in enumerate(paths):
+        # if index<100:
+        print(">> processing {}/{}".format(index+1, len(paths)))
+        mydoc = minidom.parse(path)
+        boxes = xml_utils.get_object_xml(mydoc)
+        for i in range(len(boxes)):
+            tool, xmin, xmax, ymin, ymax = boxes[i]
+            tool = tool.lower()
+            count_dict_tool[tool] += 1   
+        if len(boxes)>1:
+            count_multitool_per_frame += 1
+        else:
+            count_dict_tool_multi[tool] += 1
+    print(count_dict_tool)
+    print(count_multitool_per_frame)
+    print(count_dict_tool_multi)
+
 if __name__ == "__main__":
-    main()
+    # main()
+    test()

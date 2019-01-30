@@ -1,4 +1,5 @@
 import numpy as np
+from sklearn import preprocessing
 
 def normalize_staining(img):
     """
@@ -49,3 +50,32 @@ def normalize_staining(img):
     Inorm = Inorm.T.reshape(h, w, c).clip(0, 255).astype("uint8")
 
     return Inorm
+
+
+def normalize_z(data):
+    data_norm = data - np.mean(data)
+    data_norm = data_norm/np.std(data)
+    return data_norm
+
+
+def normalize_01(data):
+    x_min = np.min(data)
+    x_max = np.max(data)
+    data_norm = (data - x_min)/(x_max-x_min)
+    return data_norm
+
+def normalize_0_255(data):
+    x_min = np.min(data)
+    x_max = np.max(data)
+    data_norm = (data - x_min)/(x_max-x_min)*255
+    data_norm = np.round(data_norm).astype(int)
+    return data_norm
+
+def normalize_rgb(img):
+    h, w, c = img.shape
+    img_norm = np.zeros([h,w,c])
+    for i in range(c):
+        ch = img[:,:,i]
+        ch_norm = normalize_0_255(ch)
+        img_norm[:,:,i] = ch_norm
+    return img_norm
