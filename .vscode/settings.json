@@ -1,5 +1,0 @@
-{
-    "python.linting.pylintEnabled": false,
-    "python.pythonPath": "/home/minhvu/anaconda3/envs/vqa/bin/python",
-    "python.linting.pylintArgs": false
-}

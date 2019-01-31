@@ -1,7 +1,7 @@
 *.jpeg
 *.jpg
 *.csv
-!*.json
+*.json
 *.zip
 *.txt
 *.tar
@@ -15,7 +15,6 @@
 *.npy
 *.DS_Store
 *.pyc
-settings.json
 !requirements.txt
 !breast_qa_full.csv
 !tools_qa_full.csv
@@ -23,7 +22,6 @@ settings.json
 !image_*.txt
 !train.txt
 !val.txt
-.vscode/*
 
 
 
