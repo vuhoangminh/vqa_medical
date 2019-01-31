@@ -115,7 +115,10 @@ def create_full_imageid_quesid_questype(df, dir_interim):
             # stop = start + len(temp)
             # full_df.loc[start:stop] = temp.loc[0:len(temp)]
             question_i = question_i + 1
-        df.append(temp_df)
+        if len(full_df) == 0:
+            full_df = temp_df
+        else:
+            full_df = full_df.append(temp_df)
     return full_df
 
 
