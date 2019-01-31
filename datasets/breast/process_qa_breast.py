@@ -13,6 +13,8 @@ import re
 import math
 import pickle
 import datasets.utils.process_qa_utils as process_utils
+import datasets.utils.paths_utils as path_utils
+
 
 def vqa_processed(params):
     
@@ -87,7 +89,7 @@ def vqa_processed(params):
     dir_save = os.path.join(params['dir'], 'processed', subdirname)
     if not os.path.exists(dir_save):
         print('>> make dir', dir_save)
-        os.mkdir(dir_save)
+        path_utils.make_dir(dir_save)
 
     path_wid_to_word = os.path.join(params['dir'], 'processed', subdirname, 'wid_to_word.pickle')
     path_word_to_wid = os.path.join(params['dir'], 'processed', subdirname, 'word_to_wid.pickle')
