@@ -5,6 +5,7 @@ import datasets.utils.print_utils as print_utils
 import datasets.utils.paths_utils as path_utils
 import datasets.utils.xml_utils as xml_utils
 import datasets.utils.image_utils as image_utils
+import datasets.utils.io_utils as io_utils
 from PIL import Image
 from tqdm import tqdm
 import numpy as np
@@ -41,11 +42,6 @@ IMAGE_SET_DIR = PROJECT_DIR + \
     "/data/raw/m2cai16-tool-locations/preprocessed/imagesets/"
 DATASETS_DIR = PROJECT_DIR + "/data/raw/m2cai16-tool-locations/Annotations/"
 RAW_DIR = PROJECT_DIR + "/data/vqa_tools/raw/raw/"
-
-path_utils.make_dir(PREPROCESSED_IMAGE_DIR)
-path_utils.make_dir(CLASSIFICATION_IMAGE_DIR)
-path_utils.make_dir(SEGMENTATION_IMAGE_DIR)
-path_utils.make_dir(IMAGE_SET_DIR)
 
 
 list_tool = [
@@ -133,6 +129,7 @@ def split_images_for_image_model_and_vqa(N=100, P=0.6):
         else:
             if count_train_images_segmentation < num_images_segmentation_train:
                 segmentation_dict_tool["train"].append(filename)
+                count_train_images_segmentation += 1
             else:
                 segmentation_dict_tool["val"].append(filename)
 
@@ -141,30 +138,18 @@ def split_images_for_image_model_and_vqa(N=100, P=0.6):
         path_write = "{}image_{}.txt".format(IMAGE_SET_DIR, tool)
         if not os.path.exists(path_write):
             print("write to", path_write)
-            write_list_to_file(my_list, path_write)
+            io_utils.write_list_to_file(my_list, path_write)
         else:
             print("path exists. Skip...")
 
     for dataset in segmentation_dict_tool.keys():
-        my_list = classification_dict_tool[tool]
+        my_list = segmentation_dict_tool[dataset]
         path_write = "{}{}.txt".format(IMAGE_SET_DIR, dataset)
         if not os.path.exists(path_write):
             print("write to", path_write)
-            write_list_to_file(my_list, path_write)
+            io_utils.write_list_to_file(my_list, path_write)
         else:
             print("path exists. Skip...")
-
-
-def write_list_to_file(my_list, path):
-    with open(path, 'w+') as f:
-        for item in my_list:
-            f.write("%s\n" % item)
-
-
-def read_file_to_list(path):
-    with open(path, 'r') as f:
-        x = f.readlines()
-    return x
 
 
 def move_files():
@@ -174,7 +159,7 @@ def move_files():
     # read files
     for tool in classification_dict_tool.keys():
         path_write = "{}image_{}.txt".format(IMAGE_SET_DIR, tool)
-        temp = read_file_to_list(path_write)
+        temp = io_utils.read_file_to_list(path_write)
         my_list = list()
         for i in range(len(temp)):
             my_list.append(temp[i].strip('\n'))
@@ -182,7 +167,7 @@ def move_files():
         
     for dataset in segmentation_dict_tool.keys():
         path_write = "{}{}.txt".format(IMAGE_SET_DIR, dataset)
-        temp = read_file_to_list(path_write)
+        temp = io_utils.read_file_to_list(path_write)
         my_list = list()
         for i in range(len(temp)):
             my_list.append(temp[i].strip('\n'))
@@ -208,7 +193,19 @@ def move_files():
             path_out = "{}{}.jpg".format(dir_out, filename)
             shutil.copyfile(path_in, path_out)
 
-def main():
+def main(overwrite=False):
+    if overwrite and os.path.exists(PREPROCESSED_IMAGE_DIR):
+        path_utils.delete_dir(PREPROCESSED_IMAGE_DIR)
+    if overwrite and os.path.exists(CLASSIFICATION_IMAGE_DIR):
+        path_utils.delete_dir(CLASSIFICATION_IMAGE_DIR)
+    if overwrite and os.path.exists(SEGMENTATION_IMAGE_DIR):
+        path_utils.delete_dir(SEGMENTATION_IMAGE_DIR)
+
+    path_utils.make_dir(PREPROCESSED_IMAGE_DIR)
+    path_utils.make_dir(CLASSIFICATION_IMAGE_DIR)
+    path_utils.make_dir(SEGMENTATION_IMAGE_DIR)
+    path_utils.make_dir(IMAGE_SET_DIR)
+
     print_utils.print_section("image model")
     prepare_image_model(overwrite=False, is_debug=False)
     print_utils.print_section("split images")
@@ -218,4 +215,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(overwrite=True)

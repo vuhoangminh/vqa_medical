@@ -1,5 +1,6 @@
 import os
 import ntpath
+import shutil
 
 
 def get_project_dir(path, project_name):
@@ -25,3 +26,8 @@ def get_filename_without_extension(path):
 
 def get_parent_dir(path):
     return os.path.abspath(os.path.join(path, os.pardir))
+
+
+def delete_dir(path):
+    print(">> delete", path)
+    shutil.rmtree(path)

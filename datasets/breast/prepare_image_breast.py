@@ -4,11 +4,14 @@ import datasets.utils.print_utils as print_utils
 import datasets.utils.paths_utils as path_utils
 import datasets.utils.xml_utils as xml_utils
 import datasets.utils.image_utils as image_utils
+import datasets.utils.io_utils as io_utils
 from PIL import Image
 from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import glob
+import random
+random.seed(1988)
 from scipy.misc import imsave, imresize
 from scipy.misc import toimage
 import os
@@ -105,7 +108,7 @@ def process_one_svs_one_xml(filename, img_svs, gt, upsampling_factor=4, is_debug
         gt_save_dir = PREPROCESSED_IMAGE_WSI_GT_DIR + outname + ".png"
 
         if not os.path.exists(patch_save_dir) or not os.path.exists(gt_save_dir):
-        # if "A01_idx-12864-14928_ps-16384-16384" in gt_save_dir:
+            # if "A01_idx-12864-14928_ps-16384-16384" in gt_save_dir:
 
             patch_extracted = image_utils.get_patch_from_3d_data(
                 img_svs, patch_shape=patch_size_img, patch_index=patch_indices[i])
@@ -129,11 +132,12 @@ def process_one_svs_one_xml(filename, img_svs, gt, upsampling_factor=4, is_debug
             print(">> saving images...")
             # imsave(gt_save_dir, gt_extracted_resized)
             # imsave(patch_save_dir, patch_extracted_resized)
-            gt_extracted_resized = Image.fromarray(gt_extracted_resized.astype(np.uint8))
+            gt_extracted_resized = Image.fromarray(
+                gt_extracted_resized.astype(np.uint8))
             gt_extracted_resized.save(gt_save_dir, format="PNG")
-            patch_extracted_resized = Image.fromarray(patch_extracted_resized.astype(np.uint8))
+            patch_extracted_resized = Image.fromarray(
+                patch_extracted_resized.astype(np.uint8))
             patch_extracted_resized.save(patch_save_dir, format="PNG")
-
 
             if is_debug:
                 im = Image.fromarray(gt_extracted_resized)
@@ -164,8 +168,58 @@ def prepare_question_model(is_save=False):
         gt = image_utils.generate_groundtruth_from_xml(
             save_dir, dims, coords, labels, is_debug=False, is_save=is_save)
 
-        for upsampling_factor in [4,5,6]:
-            process_one_svs_one_xml(filename, img_svs, gt, upsampling_factor=upsampling_factor, is_debug=False)
+        for upsampling_factor in [4, 5, 6]:
+            process_one_svs_one_xml(
+                filename, img_svs, gt, upsampling_factor=upsampling_factor, is_debug=False)
+
+
+def split_images_for_vqa(P=0.7):
+    paths = glob.glob(PREPROCESSED_IMAGE_WSI_PATCH_DIR + "*.png")
+    random.shuffle(paths)
+
+    num_images = len(paths)
+    num_images_segmentation_train = int(round(num_images*P))
+    num_images_segmentation_val = num_images - num_images_segmentation_train
+
+    segmentation_dict_tool = {k: [] for k in ["train", "val"]}
+    
+
+    for index, path in enumerate(paths):
+        filename = path_utils.get_filename_without_extension(path)
+        print(">> processing {}/{}".format(index+1, len(paths)))
+        print(filename)
+        mydoc = minidom.parse(path)
+        boxes = xml_utils.get_object_xml(mydoc)
+        for i in range(len(boxes)):
+            tool, xmin, xmax, ymin, ymax = boxes[i]
+            tool = tool.lower()
+        if len(boxes) == 1 and count_dict_tool_multi[tool] < N:
+            classification_dict_tool[tool].append(filename)
+            count_dict_tool_multi[tool] += 1
+            print(count_dict_tool_multi)
+        else:
+            if count_train_images_segmentation < num_images_segmentation_train:
+                segmentation_dict_tool["train"].append(filename)
+            else:
+                segmentation_dict_tool["val"].append(filename)
+
+    for tool in classification_dict_tool.keys():
+        my_list = classification_dict_tool[tool]
+        path_write = "{}image_{}.txt".format(IMAGE_SET_DIR, tool)
+        if not os.path.exists(path_write):
+            print("write to", path_write)
+            write_list_to_file(my_list, path_write)
+        else:
+            print("path exists. Skip...")
+
+    for dataset in segmentation_dict_tool.keys():
+        my_list = classification_dict_tool[tool]
+        path_write = "{}{}.txt".format(IMAGE_SET_DIR, dataset)
+        if not os.path.exists(path_write):
+            print("write to", path_write)
+            write_list_to_file(my_list, path_write)
+        else:
+            print("path exists. Skip...")
 
 
 def main():

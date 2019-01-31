@@ -39,7 +39,6 @@ def fix_bb_coordinates_after_resize(boxes, old_shape, new_shape):
     return new_boxes
 
 
-
 def add_case(path_case, image_id):
     mydoc = minidom.parse(path_case)
     file_id = xml_utils.get_data_xml(mydoc, "filename")
@@ -95,7 +94,6 @@ def add_case(path_case, image_id):
     q_row.extend(q)
     a_row.extend(a)
 
-
     # extend cols rows
     cols.extend(q_row)
     rows.extend(a_row)
@@ -103,7 +101,7 @@ def add_case(path_case, image_id):
     return cols, rows
 
 
-def main():
+def main(overwrite=False):
     paths = glob.glob(DATASETS_DIR + "*.xml")
     rows = list()
     rows_temp = list()
@@ -125,34 +123,10 @@ def main():
     df = pd.DataFrame.from_dict(dictionary)
 
     save_dir = RAW_DIR + "tools_qa_full.csv"
-    df.to_csv(save_dir)
-    print(df)
+    if overwrite or not os.path.exists(save_dir):
+        df.to_csv(save_dir)
+        print(df)
 
-
-def test():
-    paths = glob.glob(DATASETS_DIR + "*.xml")
-    rows = list()
-    rows_temp = list()
-    count_dict_tool = dict(zip(list_tool, [0] * 7))
-    count_dict_tool_multi = dict(zip(list_tool, [0] * 7))
-    count_multitool_per_frame = 0
-    for index, path in enumerate(paths):
-        # if index<100:
-        print(">> processing {}/{}".format(index+1, len(paths)))
-        mydoc = minidom.parse(path)
-        boxes = xml_utils.get_object_xml(mydoc)
-        for i in range(len(boxes)):
-            tool, xmin, xmax, ymin, ymax = boxes[i]
-            tool = tool.lower()
-            count_dict_tool[tool] += 1   
-        if len(boxes)>1:
-            count_multitool_per_frame += 1
-        else:
-            count_dict_tool_multi[tool] += 1
-    print(count_dict_tool)
-    print(count_multitool_per_frame)
-    print(count_dict_tool_multi)
 
 if __name__ == "__main__":
-    # main()
-    test()
+    main(overwrite=False)
