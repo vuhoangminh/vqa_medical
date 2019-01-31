@@ -15,6 +15,7 @@
 *.npy
 *.DS_Store
 *.pyc
+settings.json
 !requirements.txt
 !breast_qa_full.csv
 !tools_qa_full.csv
@@ -22,6 +23,8 @@
 !image_*.txt
 !train.txt
 !val.txt
+.vscode/*
+
 
 
 # Windows thumbnail cache files
@@ -47,3 +50,5 @@ $RECYCLE.BIN/
 # =========================
 # Operating System Files
 # =========================
+.vscode/settings.json
+.vscode/settings.json

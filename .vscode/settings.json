@@ -1,5 +1,5 @@
 {
     "python.linting.pylintEnabled": false,
-    "python.pythonPath": "C:\\Users\\minhm\\Anaconda3\\envs\\vqa\\python.exe",
+    "python.pythonPath": "/home/minhvu/anaconda3/envs/vqa/bin/python",
     "python.linting.pylintArgs": false
 }
