@@ -4,10 +4,11 @@ import pandas as pd
 import argparse
 from collections import Counter, OrderedDict
 
+
 def create_questions(df, dataset, dir_interim):
     filename = dir_interim + dataset + '_questions.json'
-    if dataset=='testdev':
-        dataset='test'
+    if dataset == 'testdev':
+        dataset = 'test'
 
     if os.path.exists(filename):
         print('>> loading', filename)
@@ -21,7 +22,7 @@ def create_questions(df, dataset, dir_interim):
                 question_id = str(row['question_id']).zfill(9)
                 image_name = row['file_id'] + '.jpg'
                 question = row['question']
-                
+
                 row_dict = OrderedDict()
                 row_dict['question_id'] = question_id
                 row_dict['image_name'] = image_name
@@ -32,7 +33,7 @@ def create_questions(df, dataset, dir_interim):
 
         with open(filename, 'w') as fp:
             print('>> saving', filename)
-            json.dump(json_data, fp)       
+            json.dump(json_data, fp)
 
     return dataset_questions
 
@@ -53,8 +54,8 @@ def create_questions_annotations(df, dataset, dir_interim):
                 image_name = row['file_id'] + '.jpg'
                 question = row['question']
                 answer = row['answer']
-                answers_occurence = [[answer,10]]
-                
+                answers_occurence = [[answer, 10]]
+
                 row_dict = OrderedDict()
                 row_dict['question_id'] = question_id
                 row_dict['image_name'] = image_name
@@ -62,20 +63,22 @@ def create_questions_annotations(df, dataset, dir_interim):
                 row_dict['answer'] = answer
                 row_dict['answers_occurence'] = answers_occurence
 
-                dataset_questions_annotations = dataset_questions_annotations + [row_dict]
+                dataset_questions_annotations = dataset_questions_annotations + \
+                    [row_dict]
 
         json_data = dataset_questions_annotations
 
         with open(filename, 'w') as fp:
             print('>> saving', filename)
-            json.dump(json_data, fp)       
+            json.dump(json_data, fp)
 
     return dataset_questions_annotations
 
+
 def create_full_imageid_quesid_questype(df, dir_interim):
-    cols = ['file_id', 'image_id', 'question', 'question_id', 
+    cols = ['file_id', 'image_id', 'question', 'question_id',
             'question_type', 'answer', 'multiple_choice_answer',
-            'answer', 'answer_confidence', 'answer_id', 
+            'answer', 'answer_confidence', 'answer_id',
             'dataset']
     full_df = pd.DataFrame(columns=cols)
     question_list = find_question_list(df)
@@ -85,14 +88,15 @@ def create_full_imageid_quesid_questype(df, dir_interim):
         dataset = row['dataset']
         image_id = row['image_id']
         question_i = 0
+        temp_df = pd.DataFrame(columns=cols)
         for question in question_list:
             try:
                 image_id = str(image_id)
             except ValueError:
-                pass 
+                pass
             question_id = str(image_id + str(question_i).zfill(6)).zfill(12)
             answer = row[question]
-            temp = pd.DataFrame({'file_id': [file_id],
+            row_df = pd.DataFrame({'file_id': [file_id],
                                 'image_id': [image_id],
                                 'question': [question],
                                 'question_id': [question_id],
@@ -102,12 +106,16 @@ def create_full_imageid_quesid_questype(df, dir_interim):
                                 'answer_confidence': ['yes'],
                                 'answer_id': [1],
                                 'dataset': [dataset]
-                                }) 
-            if len(full_df)==0:
-                full_df = temp
-            else:                
-                full_df = full_df.append(temp)                                        
+                                })
+            if len(temp_df) == 0:
+                temp_df = row_df
+            else:
+                temp_df = temp_df.append(row_df)
+            # start = len(full_df)
+            # stop = start + len(temp)
+            # full_df.loc[start:stop] = temp.loc[0:len(temp)]
             question_i = question_i + 1
+        df.append(temp_df)
     return full_df
 
 
