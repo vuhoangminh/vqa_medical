@@ -92,7 +92,7 @@ def prepare_image_model(overwrite=False, is_debug=False):
         if not os.path.exists(path_out) or overwrite:
             print(">> processing {}/{}".format(index+1, len(img_dirs)))
             normalize(path_in, path_out=path_out, is_debug=is_debug,
-                      is_save=True, is_resize=True, is_normalize=True)
+                      is_save=True, is_resize=True, is_normalize=False)
         else:
             print("skip {}/{}".format(index+1, len(img_dirs)))
 

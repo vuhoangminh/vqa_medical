@@ -31,6 +31,8 @@ PREPROCESSED_IMAGE_PHOTOS_DIR = PROJECT_DIR + \
     "/data/raw/breast-cancer/preprocessed/Photos/"
 PREPROCESSED_IMAGE_WSI_DIR = PROJECT_DIR + \
     "/data/raw/breast-cancer/preprocessed/WSI/"
+IMAGE_SET_DIR = PROJECT_DIR + \
+    "/data/raw/breast-cancer/preprocessed/imagesets/"
 PREPROCESSED_IMAGE_WSI_PATCH_DIR = PREPROCESSED_IMAGE_WSI_DIR + "patch/"
 PREPROCESSED_IMAGE_WSI_GT_DIR = PREPROCESSED_IMAGE_WSI_DIR + "patch_gt/"
 
@@ -39,6 +41,7 @@ path_utils.make_dir(PREPROCESSED_IMAGE_PHOTOS_DIR)
 path_utils.make_dir(PREPROCESSED_IMAGE_WSI_DIR)
 path_utils.make_dir(PREPROCESSED_IMAGE_WSI_PATCH_DIR)
 path_utils.make_dir(PREPROCESSED_IMAGE_WSI_GT_DIR)
+path_utils.make_dir(IMAGE_SET_DIR)
 
 
 LIST_BREAST_CLASS = ["Benign", "InSitu", "Invasive", "Normal"]
@@ -183,51 +186,36 @@ def split_images_for_vqa(P=0.7):
 
     segmentation_dict_tool = {k: [] for k in ["train", "val"]}
     
-
+    count_train_images_segmentation = 0
     for index, path in enumerate(paths):
         filename = path_utils.get_filename_without_extension(path)
         print(">> processing {}/{}".format(index+1, len(paths)))
-        print(filename)
-        mydoc = minidom.parse(path)
-        boxes = xml_utils.get_object_xml(mydoc)
-        for i in range(len(boxes)):
-            tool, xmin, xmax, ymin, ymax = boxes[i]
-            tool = tool.lower()
-        if len(boxes) == 1 and count_dict_tool_multi[tool] < N:
-            classification_dict_tool[tool].append(filename)
-            count_dict_tool_multi[tool] += 1
-            print(count_dict_tool_multi)
+        if count_train_images_segmentation < num_images_segmentation_train:
+            segmentation_dict_tool["train"].append(filename)
+            count_train_images_segmentation += 1
         else:
-            if count_train_images_segmentation < num_images_segmentation_train:
-                segmentation_dict_tool["train"].append(filename)
-            else:
-                segmentation_dict_tool["val"].append(filename)
-
-    for tool in classification_dict_tool.keys():
-        my_list = classification_dict_tool[tool]
-        path_write = "{}image_{}.txt".format(IMAGE_SET_DIR, tool)
-        if not os.path.exists(path_write):
-            print("write to", path_write)
-            write_list_to_file(my_list, path_write)
-        else:
-            print("path exists. Skip...")
+            segmentation_dict_tool["val"].append(filename)
 
     for dataset in segmentation_dict_tool.keys():
-        my_list = classification_dict_tool[tool]
+        my_list = segmentation_dict_tool[dataset]
         path_write = "{}{}.txt".format(IMAGE_SET_DIR, dataset)
         if not os.path.exists(path_write):
             print("write to", path_write)
-            write_list_to_file(my_list, path_write)
+            io_utils.write_list_to_file(my_list, path_write)
         else:
             print("path exists. Skip...")
 
 
-def main():
+def main(overwrite=False):
     print_utils.print_section("image model")
-    prepare_image_model()
+    if overwrite:
+        prepare_image_model()
     print_utils.print_section("question model")
-    prepare_question_model()
+    if overwrite:
+        prepare_question_model()
+    print_utils.print_section("split train val for vqa")
+    split_images_for_vqa()
 
 
 if __name__ == "__main__":
-    main()
+    main(overwrite=False)
