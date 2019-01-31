@@ -1,7 +1,7 @@
 *.jpeg
 *.jpg
 *.csv
-*.json
+!*.json
 *.zip
 *.txt
 *.tar

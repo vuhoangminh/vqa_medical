@@ -7,8 +7,7 @@ from collections import Counter, OrderedDict
 
 def create_questions(df, dataset, dir_interim):
     filename = dir_interim + dataset + '_questions.json'
-    if dataset == 'testdev':
-        dataset = 'test'
+    dataset = "val"
 
     if os.path.exists(filename):
         print('>> loading', filename)
@@ -18,9 +17,10 @@ def create_questions(df, dataset, dir_interim):
     else:
         dataset_questions = []
         for index, row in df.iterrows():
+            print("processing {}/{}".format(index+1, len(df)))
             if row['dataset'] == dataset:
-                question_id = str(row['question_id']).zfill(9)
-                image_name = row['file_id'] + '.jpg'
+                question_id = str(row['question_id']).zfill(12)
+                image_name = row['file_id']
                 question = row['question']
 
                 row_dict = OrderedDict()
@@ -49,9 +49,10 @@ def create_questions_annotations(df, dataset, dir_interim):
     else:
         dataset_questions_annotations = []
         for index, row in df.iterrows():
+            print("processing {}/{}".format(index+1, len(df)))
             if row['dataset'] == dataset:
-                question_id = str(row['question_id']).zfill(9)
-                image_name = row['file_id'] + '.jpg'
+                question_id = str(row['question_id']).zfill(12)
+                image_name = row['file_id']
                 question = row['question']
                 answer = row['answer']
                 answers_occurence = [[answer, 10]]
@@ -68,7 +69,7 @@ def create_questions_annotations(df, dataset, dir_interim):
 
         json_data = dataset_questions_annotations
 
-        with open(filename, 'w') as fp:
+        with open(filename, 'w+') as fp:
             print('>> saving', filename)
             json.dump(json_data, fp)
 
