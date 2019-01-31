@@ -1,3 +1,4 @@
+import os
 import datasets.utils.svs_utils as svs_utils
 import datasets.utils.normalization_utils as normalization_utils
 import datasets.utils.print_utils as print_utils
@@ -16,7 +17,6 @@ from xml.dom import minidom
 import shutil
 import random
 random.seed(1988)
-import os
 OPENSLIDE_PATH = "C:/Users/minhm/Documents/GitHub/bin/openslide-win64-20171122/bin"
 if os.path.exists(OPENSLIDE_PATH):
     os.environ['PATH'] = OPENSLIDE_PATH + ";" + os.environ['PATH']
@@ -96,7 +96,7 @@ def prepare_image_model(overwrite=False, is_debug=False):
         if not os.path.exists(path_out) or overwrite:
             print(">> processing {}/{}".format(index+1, len(img_dirs)))
             normalize(path_in, path_out=path_out, is_debug=is_debug,
-                        is_save=True, is_resize=True, is_normalize=True)
+                      is_save=True, is_resize=True, is_normalize=True)
         else:
             print("skip {}/{}".format(index+1, len(img_dirs)))
 
@@ -104,7 +104,7 @@ def prepare_image_model(overwrite=False, is_debug=False):
 def split_images_for_image_model_and_vqa(N=100, P=0.6):
     paths = glob.glob(DATASETS_DIR + "*.xml")
     random.shuffle(paths)
-    
+
     num_images = len(paths)
     num_images_segmentation = num_images - N*len(list_tool)
     num_images_segmentation_train = int(round(num_images_segmentation*P))
@@ -117,16 +117,6 @@ def split_images_for_image_model_and_vqa(N=100, P=0.6):
     segmentation_dict_tool = {k: [] for k in ["train", "val"]}
     count_train_images_segmentation = 0
 
-    # list_image_grasper = list()
-    # list_image_biopolar = list()
-    # list_image_hook = list()
-    # list_image_scissors = list()
-    # list_image_clipper = list()
-    # list_image_irrigator = list()
-    # list_image_specimenbag = list()
-    # list_train = list()
-    # list_val = list()
-
     for index, path in enumerate(paths):
         filename = path_utils.get_filename_without_extension(path)
         print(">> processing {}/{}".format(index+1, len(paths)))
@@ -136,7 +126,7 @@ def split_images_for_image_model_and_vqa(N=100, P=0.6):
         for i in range(len(boxes)):
             tool, xmin, xmax, ymin, ymax = boxes[i]
             tool = tool.lower()
-        if len(boxes)==1 and count_dict_tool_multi[tool] < N:
+        if len(boxes) == 1 and count_dict_tool_multi[tool] < N:
             classification_dict_tool[tool].append(filename)
             count_dict_tool_multi[tool] += 1
             print(count_dict_tool_multi)
@@ -145,17 +135,24 @@ def split_images_for_image_model_and_vqa(N=100, P=0.6):
                 segmentation_dict_tool["train"].append(filename)
             else:
                 segmentation_dict_tool["val"].append(filename)
-    
 
     for tool in classification_dict_tool.keys():
         my_list = classification_dict_tool[tool]
-        path_write = "{}image_{}.txt".format(IMAGE_SET_DIR, tool) 
-        write_list_to_file(my_list, path_write)
+        path_write = "{}image_{}.txt".format(IMAGE_SET_DIR, tool)
+        if not os.path.exists(path_write):
+            print("write to", path_write)
+            write_list_to_file(my_list, path_write)
+        else:
+            print("path exists. Skip...")
 
     for dataset in segmentation_dict_tool.keys():
         my_list = classification_dict_tool[tool]
-        path_write = "{}{}.txt".format(IMAGE_SET_DIR, dataset) 
-        write_list_to_file(my_list, path_write)
+        path_write = "{}{}.txt".format(IMAGE_SET_DIR, dataset)
+        if not os.path.exists(path_write):
+            print("write to", path_write)
+            write_list_to_file(my_list, path_write)
+        else:
+            print("path exists. Skip...")
 
 
 def write_list_to_file(my_list, path):
@@ -164,41 +161,60 @@ def write_list_to_file(my_list, path):
             f.write("%s\n" % item)
 
 
-# def move_files():
-#     for index, path in enumerate(paths):
-#         filename = path_utils.get_filename_without_extension(path)
-#         print(">> processing {}/{}".format(index+1, len(paths)))
-#         mydoc = minidom.parse(path)
-#         boxes = xml_utils.get_object_xml(mydoc)
-#         for i in range(len(boxes)):
-#             tool, xmin, xmax, ymin, ymax = boxes[i]
-#             tool = tool.lower()
-#         if len(boxes)==1 and count_dict_tool_multi[tool] < N:
-#             src = PREPROCESSED_IMAGE_DIR + filename + ".jpg"
-#             dst_dir = CLASSIFICATION_IMAGE_DIR + tool
-#             path_utils.make_dir(dst_dir)
-#             dst = "{}/{}.jpg".format(dst_dir, filename)
-#             shutil.copyfile(src, dst)
-#             count_dict_tool_multi[tool] += 1
-#             print(count_dict_tool_multi)
-#         else:
-#             src = PREPROCESSED_IMAGE_DIR + filename + ".jpg"
-#             if count_train_images_segmentation < num_images_segmentation_train:
-#                 dst_dir = "{}{}".format(SEGMENTATION_IMAGE_DIR, "train")
-#                 path_utils.make_dir(dst_dir)
-#                 count_train_images_segmentation += 1
-#             else:
-#                 dst_dir = "{}{}".format(SEGMENTATION_IMAGE_DIR, "val")
-#                 path_utils.make_dir(dst_dir)
-#             dst = "{}/{}.jpg".format(dst_dir, filename)
-#             shutil.copyfile(src, dst)
+def read_file_to_list(path):
+    with open(path, 'r') as f:
+        x = f.readlines()
+    return x
 
+
+def move_files():
+    classification_dict_tool = {k: [] for k in list_tool}
+    segmentation_dict_tool = {k: [] for k in ["train", "val"]}
+    
+    # read files
+    for tool in classification_dict_tool.keys():
+        path_write = "{}image_{}.txt".format(IMAGE_SET_DIR, tool)
+        temp = read_file_to_list(path_write)
+        my_list = list()
+        for i in range(len(temp)):
+            my_list.append(temp[i].strip('\n'))
+        classification_dict_tool[tool] = my_list
+        
+    for dataset in segmentation_dict_tool.keys():
+        path_write = "{}{}.txt".format(IMAGE_SET_DIR, dataset)
+        temp = read_file_to_list(path_write)
+        my_list = list()
+        for i in range(len(temp)):
+            my_list.append(temp[i].strip('\n'))
+        segmentation_dict_tool[dataset] = my_list
+    
+
+    # move images
+    for tool in classification_dict_tool.keys():
+        filenames = classification_dict_tool[tool]
+        dir_out = "{}{}/".format(CLASSIFICATION_IMAGE_DIR, tool)
+        path_utils.make_dir(dir_out)
+        for filename in filenames:
+            path_in = "{}{}.jpg".format(PREPROCESSED_IMAGE_DIR, filename)
+            path_out = "{}{}.jpg".format(dir_out, filename)
+            shutil.copyfile(path_in, path_out)
+
+    for dataset in segmentation_dict_tool.keys():
+        filenames = classification_dict_tool[tool]
+        dir_out = "{}{}/".format(SEGMENTATION_IMAGE_DIR, dataset)
+        path_utils.make_dir(dir_out)
+        for filename in filenames:
+            path_in = "{}{}.jpg".format(PREPROCESSED_IMAGE_DIR, filename)
+            path_out = "{}{}.jpg".format(dir_out, filename)
+            shutil.copyfile(path_in, path_out)
 
 def main():
     print_utils.print_section("image model")
-    # prepare_image_model(overwrite=False, is_debug=False)
+    prepare_image_model(overwrite=False, is_debug=False)
     print_utils.print_section("split images")
     split_images_for_image_model_and_vqa()
+    print_utils.print_section("move files")
+    move_files()
 
 
 if __name__ == "__main__":
