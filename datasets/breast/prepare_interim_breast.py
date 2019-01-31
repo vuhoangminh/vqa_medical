@@ -1,5 +1,3 @@
-import datasets.utils.svs_utils as svs_utils
-import datasets.utils.normalization_utils as normalization_utils
 import datasets.utils.print_utils as print_utils
 import datasets.utils.paths_utils as path_utils
 import datasets.utils.image_utils as image_utils
