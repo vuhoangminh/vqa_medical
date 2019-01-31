@@ -185,7 +185,7 @@ def move_files():
             shutil.copyfile(path_in, path_out)
 
     for dataset in segmentation_dict_tool.keys():
-        filenames = classification_dict_tool[tool]
+        filenames = segmentation_dict_tool[dataset]
         dir_out = "{}{}/".format(SEGMENTATION_IMAGE_DIR, dataset)
         path_utils.make_dir(dir_out)
         for filename in filenames:
@@ -209,7 +209,7 @@ def main(overwrite=False):
     print_utils.print_section("image model")
     prepare_image_model(overwrite=False, is_debug=False)
     print_utils.print_section("split images")
-    split_images_for_image_model_and_vqa()
+    # split_images_for_image_model_and_vqa()
     print_utils.print_section("move files")
     move_files()
 
