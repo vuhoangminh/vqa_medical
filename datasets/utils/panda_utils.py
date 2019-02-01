@@ -1,4 +1,5 @@
 import json
+import sys
 import os
 import pandas as pd
 import argparse
@@ -49,7 +50,11 @@ def create_questions_annotations(df, dataset, dir_interim):
     else:
         dataset_questions_annotations = []
         for index, row in df.iterrows():
-            print("processing {}/{}".format(index+1, len(df)))
+            # print("processing {}/{}".format(index+1, len(df)))
+            if index % 1000 == 0:
+                sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
+                                (index, len(df), index*100.0/len(df)))
+                sys.stdout.flush()
             if row['dataset'] == dataset:
                 question_id = str(row['question_id']).zfill(12)
                 image_name = row['file_id']
@@ -84,7 +89,11 @@ def create_full_imageid_quesid_questype(df, dir_interim):
     full_df = pd.DataFrame(columns=cols)
     question_list = find_question_list(df)
     for index, row in df.iterrows():
-        print("processing {}/{}".format(index+1, len(df)))
+        # print("processing {}/{}".format(index+1, len(df)))
+        if index % 1000 == 0:
+            sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
+                            (index, len(df), index*100.0/len(df)))
+            sys.stdout.flush()
         file_id = row['file_id']
         dataset = row['dataset']
         image_id = row['image_id']
