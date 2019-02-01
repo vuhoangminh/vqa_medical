@@ -37,13 +37,13 @@ def create_questions(df, dataset, dir_interim):
                 sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
                                 (index, len(df), index*100.0/len(df)))
                 sys.stdout.flush()
-                dataset_questions_annotations = dataset_questions_annotations + \
+                dataset_questions = dataset_questions + \
                     temp_dataset_questions_annotations
                 temp_dataset_questions_annotations = []
 
-        dataset_questions_annotations = dataset_questions_annotations + \
+        dataset_questions = dataset_questions + \
                 temp_dataset_questions_annotations
-        json_data = dataset_questions_annotations
+        json_data = dataset_questions
 
         with open(filename, 'w') as fp:
             print('>> saving', filename)
@@ -111,7 +111,7 @@ def create_full_imageid_quesid_questype(df, dir_interim):
     question_list = find_question_list(df)
     for index, row in df.iterrows():
         # print("processing {}/{}".format(index+1, len(df)))
-        if index % 1000 == 0:
+        if index % 10 == 0:
             sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
                             (index, len(df), index*100.0/len(df)))
             sys.stdout.flush()

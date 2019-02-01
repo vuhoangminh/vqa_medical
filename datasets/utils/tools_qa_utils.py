@@ -1,5 +1,13 @@
 import itertools
 from itertools import product
+from operator import itemgetter
+
+def find_list_tools_in_boxes(boxes):
+    list_tools = []
+    for i in range(len(boxes)):
+        tool, xmin1, xmax1, ymin1, ymax1 = boxes[i]
+        list_tools.append(tool)
+    return list_tools
 
 
 def find_all_combination_of_two_lists(list1, is_unique=True):
@@ -106,11 +114,10 @@ def generate_ques_is_there_any_x(x):
 
 
 def get_ans_is_there_any_x(x, boxes):
-    major_tool = get_ans_major_tool(boxes)
-    minor_tool = get_ans_minor_tool(boxes)
+    list_tools = find_list_tools_in_boxes(boxes)
     a = list()
     for i in range(len(x)):
-        if major_tool == x[i] or minor_tool == x[i]:
+        if x[i] in list_tools:
             a.append("yes")
         else:
             a.append("no")
@@ -186,31 +193,34 @@ def get_ans_is_x_in_z(x, encoded_locations, boxes):
 
 
 def get_tool_position(boxes):
-    areas = list()
     keys = ["left", "right", "top", "bottom"]
     values = list()
 
-    tool1, xmin1, xmax1, ymin1, ymax1 = boxes[0]
-    tool2, xmin2, xmax2, ymin2, ymax2 = boxes[1]
+    tools = list()
+    xmid = list()
+    ymid = list()
+    for i in range(len(boxes)):
+        tools.append(boxes[i][0])
+        xmid.append(boxes[i][2]-boxes[i][1])
+        ymid.append(boxes[i][4]-boxes[i][3])
 
-    if (xmax1-xmin1)/2 <= (xmax2-xmin2)/2:
-        values.extend([tool1, tool2])
-    else:
-        values.extend([tool2, tool1])
+    min_xmid_idx = min(enumerate(xmid), key=itemgetter(1))[0]
+    max_xmid_idx = max(enumerate(xmid), key=itemgetter(1))[0]
+    min_ymid_idx = min(enumerate(ymid), key=itemgetter(1))[0]
+    max_ymid_idx = max(enumerate(ymid), key=itemgetter(1))[0]
 
-    if (ymax1-ymin1)/2 <= (ymax2-ymin2)/2:
-        values.extend([tool1, tool2])
-    else:
-        values.extend([tool2, tool1])
+    values.extend([tools[min_xmid_idx], tools[max_xmid_idx], tools[min_ymid_idx], tools[max_ymid_idx]])
 
     return dict(zip(keys, values))
-  
+
 
 def generate_ques_which_tool_pointed_tip_position():
     q = list()
-    position_list = ["on the left", "on the right", "at the top", "at the bottom"]
+    position_list = ["on the left", "on the right",
+                     "at the top", "at the bottom"]
     for i in range(len(position_list)):
-        ques = "which tool having pointed tip {} of the image?".format(position_list[i])
+        ques = "which tool having pointed tip {} of the image?".format(
+            position_list[i])
         q.append(ques.lower())
     return q
 

@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import pandas as pd
 from collections import OrderedDict
@@ -106,8 +107,10 @@ def main(overwrite=False):
     rows = list()
     rows_temp = list()
     for index, path in enumerate(paths):
-        # if index<100:
-        print(">> processing {}/{}".format(index+1, len(paths)))
+        if index % 100 == 0 and index>0:
+            sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
+                            (index, len(paths), index*100.0/len(paths)))
+            sys.stdout.flush()
         col, row = add_case(path, str(index).zfill(5))
         rows_temp.append(row)
         if index % 20 == 0 and index > 0:
