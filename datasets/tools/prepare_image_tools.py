@@ -152,7 +152,7 @@ def split_images_for_image_model_and_vqa(N=100, P=0.6):
             print("path exists. Skip...")
 
 
-def move_files():
+def move_files(P=0.7):
     classification_dict_tool = {k: [] for k in list_tool}
     segmentation_dict_tool = {k: [] for k in ["train", "val"]}
     
@@ -173,14 +173,24 @@ def move_files():
             my_list.append(temp[i].strip('\n'))
         segmentation_dict_tool[dataset] = my_list
     
-
     # move images
     for tool in classification_dict_tool.keys():
         filenames = classification_dict_tool[tool]
-        dir_out = "{}{}/".format(CLASSIFICATION_IMAGE_DIR, tool)
-        path_utils.make_dir(dir_out)
+
+        num_images = len(filenames)
+        num_train = int(round(len(filenames)*P))
+        count_train = 0
+
         for filename in filenames:
             path_in = "{}{}.jpg".format(PREPROCESSED_IMAGE_DIR, filename)
+
+            if count_train < num_train:
+                dir_out = "{}train/{}/".format(CLASSIFICATION_IMAGE_DIR, tool)
+                count_train += 1
+            else:
+                dir_out = "{}val/{}/".format(CLASSIFICATION_IMAGE_DIR, tool)
+
+            path_utils.make_dir(dir_out)
             path_out = "{}{}.jpg".format(dir_out, filename)
             shutil.copyfile(path_in, path_out)
 
@@ -207,7 +217,7 @@ def main(overwrite=False):
     path_utils.make_dir(IMAGE_SET_DIR)
 
     print_utils.print_section("image model")
-    prepare_image_model(overwrite=False, is_debug=False)
+    # prepare_image_model(overwrite=False, is_debug=False)
     print_utils.print_section("split images")
     # split_images_for_image_model_and_vqa()
     print_utils.print_section("move files")
@@ -215,4 +225,4 @@ def main(overwrite=False):
 
 
 if __name__ == "__main__":
-    main(overwrite=True)
+    main(overwrite=False)

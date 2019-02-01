@@ -67,15 +67,27 @@ def normalize(path_in, path_out=None, is_debug=False, is_save=False, is_resize=T
         im_resized.save(path_out)
 
 
-def prepare_image_model(overwrite=False):
+def prepare_image_model(overwrite=False, P=0.7):
     for breast in LIST_BREAST_CLASS:
         folder_in = DATASETS_PHOTOS_DIR + breast
-        folder_out = PREPROCESSED_IMAGE_PHOTOS_DIR + breast
-        path_utils.make_dir(folder_out)
         img_dirs = glob.glob(os.path.join(folder_in, "*.tif"))
+
+        num_images = len(img_dirs)
+        num_train = int(round(len(img_dirs)*P))
+        count_train = 0 
+
         for index, path_in in enumerate(img_dirs):
             filename = path_utils.get_filename_without_extension(path_in)
+            
+            if count_train < num_train:
+                folder_out = "{}train/{}".format(PREPROCESSED_IMAGE_PHOTOS_DIR, breast) 
+                count_train += 1
+            else:
+                folder_out = "{}val/{}".format(PREPROCESSED_IMAGE_PHOTOS_DIR, breast) 
+
+            path_utils.make_dir(folder_out)
             path_out = folder_out + "/{}.jpg".format(filename)
+            
             if not os.path.exists(path_out) or overwrite:
                 print(">> processing {}/{}".format(index+1, len(img_dirs)))
                 normalize(path_in, path_out=path_out, is_debug=False,
@@ -208,13 +220,13 @@ def split_images_for_vqa(P=0.7):
 
 def main(overwrite=False):
     print_utils.print_section("image model")
-    if overwrite:
-        prepare_image_model()
+    # if overwrite:
+    prepare_image_model()
     print_utils.print_section("question model")
     if overwrite:
         prepare_question_model()
     print_utils.print_section("split train val for vqa")
-    split_images_for_vqa()
+    # split_images_for_vqa()
 
 
 if __name__ == "__main__":
