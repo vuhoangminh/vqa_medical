@@ -18,7 +18,8 @@ def create_questions(df, dataset, dir_interim):
     else:
         dataset_questions = []
         for index, row in df.iterrows():
-            print("processing {}/{}".format(index+1, len(df)))
+            if index == 0:
+                temp_dataset_questions_annotations = []
             if row['dataset'] == dataset:
                 question_id = str(row['question_id']).zfill(12)
                 image_name = row['file_id']
@@ -28,9 +29,21 @@ def create_questions(df, dataset, dir_interim):
                 row_dict['question_id'] = question_id
                 row_dict['image_name'] = image_name
                 row_dict['question'] = question
-                dataset_questions = dataset_questions + [row_dict]
 
-        json_data = dataset_questions
+                temp_dataset_questions_annotations = temp_dataset_questions_annotations + \
+                    [row_dict]
+
+            if index % 1000 == 0 and index>0:
+                sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
+                                (index, len(df), index*100.0/len(df)))
+                sys.stdout.flush()
+                dataset_questions_annotations = dataset_questions_annotations + \
+                    temp_dataset_questions_annotations
+                temp_dataset_questions_annotations = []
+
+        dataset_questions_annotations = dataset_questions_annotations + \
+                temp_dataset_questions_annotations
+        json_data = dataset_questions_annotations
 
         with open(filename, 'w') as fp:
             print('>> saving', filename)
@@ -50,11 +63,9 @@ def create_questions_annotations(df, dataset, dir_interim):
     else:
         dataset_questions_annotations = []
         for index, row in df.iterrows():
-            # print("processing {}/{}".format(index+1, len(df)))
-            if index % 1000 == 0:
-                sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
-                                (index, len(df), index*100.0/len(df)))
-                sys.stdout.flush()
+            if index == 0:
+                temp_dataset_questions_annotations = []
+
             if row['dataset'] == dataset:
                 question_id = str(row['question_id']).zfill(12)
                 image_name = row['file_id']
@@ -69,9 +80,19 @@ def create_questions_annotations(df, dataset, dir_interim):
                 row_dict['answer'] = answer
                 row_dict['answers_occurence'] = answers_occurence
 
-                dataset_questions_annotations = dataset_questions_annotations + \
+                temp_dataset_questions_annotations = temp_dataset_questions_annotations + \
                     [row_dict]
 
+            if index % 1000 == 0 and index>0:
+                sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
+                                (index, len(df), index*100.0/len(df)))
+                sys.stdout.flush()
+                dataset_questions_annotations = dataset_questions_annotations + \
+                    temp_dataset_questions_annotations
+                temp_dataset_questions_annotations = []
+
+        dataset_questions_annotations = dataset_questions_annotations + \
+                temp_dataset_questions_annotations
         json_data = dataset_questions_annotations
 
         with open(filename, 'w+') as fp:
