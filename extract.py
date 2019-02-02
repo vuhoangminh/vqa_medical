@@ -30,7 +30,6 @@ parser.add_argument('--dir_data', default='data/raw/m2cai16-tool-locations/prepr
 parser.add_argument('--data_split', default='train', type=str,
                     help='Options: (default) train | val | test')
 parser.add_argument('--arch', '-a', default='resnet152_tools',
-                    choices=convnets_idrid.model_names,
                     help='model architecture: ' +
                         ' | '.join(convnets_idrid.model_names) +
                         ' (default: fbresnet152)')

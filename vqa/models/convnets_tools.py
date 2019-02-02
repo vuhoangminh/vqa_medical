@@ -119,7 +119,7 @@ def factory(opt, cuda=True, data_parallel=True):
 
     elif opt['arch'] == 'resnet152_tools':
         filename = 'data/image_models/best_resnet152_crossentropyloss_tools.pth.tar'
-        model = pytorch_models.resnet18()
+        model = pytorch_models.resnet152()
         checkpoint = torch.load(filename)
         state_dict = checkpoint['state_dict']
         state_dict = rename_key(state_dict)
