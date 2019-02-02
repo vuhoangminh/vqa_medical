@@ -185,10 +185,10 @@ def move_files(P=0.7):
             path_in = "{}{}.jpg".format(PREPROCESSED_IMAGE_DIR, filename)
 
             if count_train < num_train:
-                dir_out = "{}train/raw/{}/".format(CLASSIFICATION_IMAGE_DIR, tool)
+                dir_out = "{}train/{}/".format(CLASSIFICATION_IMAGE_DIR, tool)
                 count_train += 1
             else:
-                dir_out = "{}val/raw/{}/".format(CLASSIFICATION_IMAGE_DIR, tool)
+                dir_out = "{}val/{}/".format(CLASSIFICATION_IMAGE_DIR, tool)
 
             path_utils.make_dir(dir_out)
             path_out = "{}{}.jpg".format(dir_out, filename)
@@ -196,7 +196,7 @@ def move_files(P=0.7):
 
     for dataset in segmentation_dict_tool.keys():
         filenames = segmentation_dict_tool[dataset]
-        dir_out = "{}{}/".format(SEGMENTATION_IMAGE_DIR, dataset)
+        dir_out = "{}raw/{}/".format(SEGMENTATION_IMAGE_DIR, dataset)
         path_utils.make_dir(dir_out)
         for filename in filenames:
             path_in = "{}{}.jpg".format(PREPROCESSED_IMAGE_DIR, filename)

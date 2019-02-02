@@ -1,3 +1,6 @@
+import os
+from scipy.misc import toimage
+from scipy.misc import imsave, imresize
 import datasets.utils.svs_utils as svs_utils
 import datasets.utils.normalization_utils as normalization_utils
 import datasets.utils.print_utils as print_utils
@@ -10,16 +13,13 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 import glob
+import shutil
 import random
 random.seed(1988)
-from scipy.misc import imsave, imresize
-from scipy.misc import toimage
-import os
 OPENSLIDE_PATH = "C:/Users/minhm/Documents/GitHub/bin/openslide-win64-20171122/bin"
 if os.path.exists(OPENSLIDE_PATH):
     os.environ['PATH'] = OPENSLIDE_PATH + ";" + os.environ['PATH']
 import openslide
-
 
 CURRENT_WORKING_DIR = os.path.realpath(__file__)
 PROJECT_DIR = path_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
@@ -33,6 +33,7 @@ PREPROCESSED_IMAGE_WSI_DIR = PROJECT_DIR + \
     "/data/raw/breast-cancer/preprocessed/WSI/"
 IMAGE_SET_DIR = PROJECT_DIR + \
     "/data/raw/breast-cancer/preprocessed/imagesets/"
+PREPROCESSED_IMAGE_WSI_RAW_DIR = PREPROCESSED_IMAGE_WSI_DIR + "raw/"
 PREPROCESSED_IMAGE_WSI_PATCH_DIR = PREPROCESSED_IMAGE_WSI_DIR + "patch/"
 PREPROCESSED_IMAGE_WSI_GT_DIR = PREPROCESSED_IMAGE_WSI_DIR + "patch_gt/"
 
@@ -42,6 +43,7 @@ path_utils.make_dir(PREPROCESSED_IMAGE_WSI_DIR)
 path_utils.make_dir(PREPROCESSED_IMAGE_WSI_PATCH_DIR)
 path_utils.make_dir(PREPROCESSED_IMAGE_WSI_GT_DIR)
 path_utils.make_dir(IMAGE_SET_DIR)
+path_utils.make_dir(PREPROCESSED_IMAGE_WSI_RAW_DIR)
 
 
 LIST_BREAST_CLASS = ["Benign", "InSitu", "Invasive", "Normal"]
@@ -74,20 +76,22 @@ def prepare_image_model(overwrite=False, P=0.7):
 
         num_images = len(img_dirs)
         num_train = int(round(len(img_dirs)*P))
-        count_train = 0 
+        count_train = 0
 
         for index, path_in in enumerate(img_dirs):
             filename = path_utils.get_filename_without_extension(path_in)
-            
+
             if count_train < num_train:
-                folder_out = "{}train/{}".format(PREPROCESSED_IMAGE_PHOTOS_DIR, breast) 
+                folder_out = "{}train/{}".format(
+                    PREPROCESSED_IMAGE_PHOTOS_DIR, breast)
                 count_train += 1
             else:
-                folder_out = "{}val/{}".format(PREPROCESSED_IMAGE_PHOTOS_DIR, breast) 
+                folder_out = "{}val/{}".format(
+                    PREPROCESSED_IMAGE_PHOTOS_DIR, breast)
 
             path_utils.make_dir(folder_out)
             path_out = folder_out + "/{}.jpg".format(filename)
-            
+
             if not os.path.exists(path_out) or overwrite:
                 print(">> processing {}/{}".format(index+1, len(img_dirs)))
                 normalize(path_in, path_out=path_out, is_debug=False,
@@ -197,7 +201,7 @@ def split_images_for_vqa(P=0.7):
     num_images_segmentation_val = num_images - num_images_segmentation_train
 
     segmentation_dict_tool = {k: [] for k in ["train", "val"]}
-    
+
     count_train_images_segmentation = 0
     for index, path in enumerate(paths):
         filename = path_utils.get_filename_without_extension(path)
@@ -218,15 +222,40 @@ def split_images_for_vqa(P=0.7):
             print("path exists. Skip...")
 
 
+def move_files():
+    # read files
+    segmentation_dict_tool = {k: [] for k in ["train", "val"]}
+    for dataset in segmentation_dict_tool.keys():
+        path_write = "{}{}.txt".format(IMAGE_SET_DIR, dataset)
+        temp = io_utils.read_file_to_list(path_write)
+        my_list = list()
+        for i in range(len(temp)):
+            my_list.append(temp[i].strip('\n'))
+        segmentation_dict_tool[dataset] = my_list
+
+    for dataset in segmentation_dict_tool.keys():
+        filenames = segmentation_dict_tool[dataset]
+        dir_out = "{}{}/".format(PREPROCESSED_IMAGE_WSI_RAW_DIR, dataset)
+        path_utils.make_dir(dir_out)
+        for filename in filenames:
+            path_in = "{}{}.png".format(
+                PREPROCESSED_IMAGE_WSI_PATCH_DIR, filename)
+            path_out = "{}{}.png".format(dir_out, filename)
+            shutil.copyfile(path_in, path_out)
+
+
 def main(overwrite=False):
     print_utils.print_section("image model")
-    # if overwrite:
-    prepare_image_model()
+    if overwrite:
+        prepare_image_model()
     print_utils.print_section("question model")
     if overwrite:
         prepare_question_model()
     print_utils.print_section("split train val for vqa")
-    # split_images_for_vqa()
+    if overwrite:
+        split_images_for_vqa()
+    print_utils.print_section("move files")
+    move_files()
 
 
 if __name__ == "__main__":
