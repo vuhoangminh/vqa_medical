@@ -1,5 +1,4 @@
 import os
-# from mpi4py import MPI
 import numpy as np
 import h5py
 import torch.utils.data as data
@@ -31,13 +30,6 @@ class IDRIDImages(AbstractImagesDataset):
 
     def _raw(self):
         print('do nothing')
-        # if self.data_split in ['train', 'val']:
-        #     os.system('wget http://msvocds.blob.core.windows.net/coco2014/{}.zip -P {}'.format(self.split_name, self.dir_raw))
-        # elif self.data_split == 'test':
-        #     os.system('wget http://msvocds.blob.core.windows.net/coco2015/test2015.zip -P '+self.dir_raw)
-        # else:
-        #     assert False, 'data_split {} not exists'.format(self.data_split)
-        # os.system('unzip '+os.path.join(self.dir_raw, self.split_name+'.zip')+' -d '+self.dir_raw)
 
     def _load_name_to_index(self):
         self.name_to_index = {name:index for index, name in enumerate(self.dataset.imgs)}

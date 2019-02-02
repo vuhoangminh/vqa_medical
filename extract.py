@@ -15,25 +15,25 @@ import torchvision.datasets as datasets
 
 import vqa.models.convnets as convnets
 import vqa.models.convnets_idrid as convnets_idrid
+import vqa.models.convnets_breast as convnets_breast
+import vqa.models.convnets_tools as convnets_tools
 import vqa.datasets as datasets
 from vqa.lib.dataloader import DataLoader
 from vqa.lib.logger import AvgMeter
 
-print (convnets_idrid.model_names)
-
 parser = argparse.ArgumentParser(description='Extract')
 parser.add_argument('--dataset', default='coco',
-                    choices=['coco', 'vgenome', 'idrid'],
+                    choices=['coco', 'vgenome', 'idrid', 'tools', 'breast'],
                     help='dataset type: coco (default) | vgenome')
 parser.add_argument('--dir_data', default='data/coco',
                     help='dir dataset to download or/and load images')
 parser.add_argument('--data_split', default='train', type=str,
                     help='Options: (default) train | val | test')
-parser.add_argument('--arch', '-a', default='resnet152',
+parser.add_argument('--arch', '-a', default='resnet18',
                     choices=convnets_idrid.model_names,
                     help='model architecture: ' +
                         ' | '.join(convnets_idrid.model_names) +
-                        ' (default: fbresnet152)')
+                        ' (default: fbresnet18)')
 parser.add_argument('--workers', default=4, type=int,
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--batch_size', '-b', default=4, type=int,
@@ -56,9 +56,12 @@ def main():
     # model = convnets.factory({'arch':'resnet18'}, cuda=False, data_parallel=False)
 
     # if debug:
-    model = convnets_idrid.factory({'arch':args.arch}, cuda=True, data_parallel=True)
-    # print(list(model.children()))
-
+    if args.dataset == "idrid":
+        model = convnets_idrid.factory({'arch':args.arch}, cuda=True, data_parallel=True)
+    elif args.dataset == "tools":
+        model = convnets_tools.factory({'arch':args.arch}, cuda=True, data_parallel=True)
+    elif args.dataset == "breast":
+        model = convnets_breast.factory({'arch':args.arch}, cuda=True, data_parallel=True)
 
     extract_name = 'arch,{}_size,{}'.format(args.arch, args.size)
 
@@ -86,7 +89,7 @@ def main():
                 transforms.ToTensor(),
                 normalize,
             ]))
-    if args.dataset == 'idrid':
+    elif args.dataset == 'idrid':
         if 'idrid' not in args.dir_data:
             raise ValueError('"idrid" string not in dir_data')
         dataset = datasets.IDRIDImages(args.data_split, dict(dir=args.dir_data),
@@ -95,7 +98,24 @@ def main():
                 transforms.CenterCrop(args.size),
                 transforms.ToTensor()
             ]))
-    
+    elif args.dataset == 'tools':
+        if 'tools' not in args.dir_data:
+            raise ValueError('"tools" string not in dir_data')
+        dataset = datasets.TOOLSImages(args.data_split, dict(dir=args.dir_data),
+            transform=transforms.Compose([
+                transforms.Scale(args.size),
+                transforms.CenterCrop(args.size),
+                transforms.ToTensor()
+            ]))
+    elif args.dataset == 'breast':
+        if 'breast' not in args.dir_data:
+            raise ValueError('"breast" string not in dir_data')
+        dataset = datasets.BREASTImages(args.data_split, dict(dir=args.dir_data),
+            transform=transforms.Compose([
+                transforms.Scale(args.size),
+                transforms.CenterCrop(args.size),
+                transforms.ToTensor()
+            ]))
 
     data_loader = DataLoader(dataset,
         batch_size=args.batch_size, shuffle=False,
