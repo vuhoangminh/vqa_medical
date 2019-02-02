@@ -108,7 +108,17 @@ def factory(opt, cuda=True, data_parallel=True):
         model = WrapperModule(model, forward_resnext)
 
     elif opt['arch'] == 'resnet18_tools':
-        filename = 'data/image_models/best_resnet18_crossentropyloss_tools_epoch2000.pth.tar'
+        filename = 'data/image_models/best_resnet18_crossentropyloss_tools.pth.tar'
+        model = pytorch_models.resnet18()
+        checkpoint = torch.load(filename)
+        state_dict = checkpoint['state_dict']
+        state_dict = rename_key(state_dict)
+        model.load_state_dict(state_dict)
+        #  ugly hack in case of DataParallel wrapping
+        model = WrapperModule(model, forward_resnet)
+
+    elif opt['arch'] == 'resnet152_tools':
+        filename = 'data/image_models/best_resnet152_crossentropyloss_tools.pth.tar'
         model = pytorch_models.resnet18()
         checkpoint = torch.load(filename)
         state_dict = checkpoint['state_dict']
