@@ -78,12 +78,7 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
         # compute output
         output = model(input_visual, input_question)
         loss = criterion(output, target_answer)
-        meters['loss'].update(loss.data[0], n=batch_size)
-
-        # measure accuracy and record loss
-        acc1, acc2 = utils.accuracy(output.data, target_answer.data, topk=(1, 2))
-        meters['acc1'].update(acc1[0], n=batch_size)
-        meters['acc2'].update(acc2[0], n=batch_size)
+        meters['loss'].update(loss.item(), n=batch_size)
 
         # measure accuracy and record loss
         acc1, acc2 = utils.accuracy(output.data, target_answer.data, topk=(1, 2))

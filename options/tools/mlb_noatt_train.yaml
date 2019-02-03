@@ -4,11 +4,11 @@ vqa:
     dataset: VQA
     dir: data/vqa_tools
     trainsplit: train
-    nans: 3
+    nans: 10
     maxlength: 26
     minwcount: 0
     nlp: mcb
-    pad: left
+    pad: right
     samplingans: True
 coco:
     dir: data/raw/m2cai16-tool-locations/preprocessed/segmentation
