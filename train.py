@@ -22,7 +22,7 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 ##################################################
 # yaml options file contains all default choices #
-parser.add_argument('--path_opt', default='options/vqa/default.yaml', type=str, 
+parser.add_argument('--path_opt', default='options/tools/default.yaml', type=str, 
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
