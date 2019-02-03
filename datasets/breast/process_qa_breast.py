@@ -150,7 +150,7 @@ def main():
         help='Options: train | trainval'
     )
     parser.add_argument('--nans',
-        default=3,
+        default=8,
         type=int,
         help='Number of top answers for the final classifications'
     )
@@ -170,7 +170,7 @@ def main():
         help='Token method ; Options: nltk | mcb | naive'
     )
     parser.add_argument('--pad',
-        default='left',
+        default='right',
         type=str,
         help='Padding ; Options: right (finish by zeros) | left (begin by zeros)'
     )

@@ -1,0 +1,40 @@
+logs:
+    dir_logs: logs/tools/default
+vqa:
+    dataset: VQA
+    dir: data/vqa_tools
+    trainsplit: train
+    nans: 3
+    maxlength: 26
+    minwcount: 0
+    nlp: mcb
+    pad: left
+    samplingans: True
+coco:
+    dir: data/raw/m2cai16-tool-locations/preprocessed/segmentation
+    arch: resnet152_tools
+    mode: noatt
+    size: 448
+model:
+    arch: MLBNoAtt
+    seq2vec:
+        arch: skipthoughts
+        dir_st: data/skip-thoughts
+        type: BayesianUniSkip
+        dropout: 0.25
+        fixed_emb: False
+    fusion:
+        dim_v: 2048
+        dim_q: 2400
+        dim_h: 1200
+        dropout_v: 0.5
+        dropout_q: 0.5
+        activation_v: tanh
+        activation_q: tanh
+    classif:
+        activation: tanh
+        dropout: 0.5
+optim:
+    lr: 0.0001
+    batch_size: 8
+    epochs: 100
