@@ -27,9 +27,9 @@ parser.add_argument('--path_opt', default='options/vqa/default.yaml', type=str,
 ################################################
 # change cli options to modify default choices #
 # logs options
-parser.add_argument('--dir_logs', type=str, help='dir logs')
+parser.add_argument('--dir_logs', type=str, help='dir logs', default="logs/tools/")
 # data options
-parser.add_argument('--vqa_trainsplit', type=str, choices=['train','trainval'])
+parser.add_argument('--vqa_trainsplit', type=str, choices=['train','trainval'], default="train")
 # model options
 parser.add_argument('--arch', choices=models.model_names,
                     help='vqa model architecture: ' +
