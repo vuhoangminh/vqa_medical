@@ -36,5 +36,5 @@ model:
         dropout: 0.5
 optim:
     lr: 0.0001
-    batch_size: 512
+    batch_size: 128
     epochs: 100
