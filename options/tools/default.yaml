@@ -14,6 +14,7 @@ coco:
     dir: data/raw/m2cai16-tool-locations/preprocessed/segmentation
     arch: resnet152_tools
     mode: noatt
+    size: 448
 model:
     arch: MLBNoAtt
     seq2vec:
