@@ -4,7 +4,7 @@ vqa:
     dataset: VQA
     dir: data/vqa_tools
     trainsplit: train
-    nans: 10
+    nans: 14
     maxlength: 26
     minwcount: 0
     nlp: mcb

@@ -27,7 +27,7 @@ parser.add_argument('--path_opt', default='options/tools/default.yaml', type=str
 ################################################
 # change cli options to modify default choices #
 # logs options
-parser.add_argument('--dir_logs', type=str, help='dir logs', default="logs/tools/")
+parser.add_argument('--dir_logs', type=str, help='dir logs')
 # data options
 parser.add_argument('--vqa_trainsplit', type=str, choices=['train','trainval'], default="train")
 # model options
