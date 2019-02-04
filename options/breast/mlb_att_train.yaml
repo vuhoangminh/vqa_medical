@@ -4,7 +4,7 @@ vqa:
     dataset: VQA
     dir: data/vqa_breast
     trainsplit: train
-    nans: 8
+    nans: 844
     maxlength: 26
     minwcount: 0
     nlp: mcb
