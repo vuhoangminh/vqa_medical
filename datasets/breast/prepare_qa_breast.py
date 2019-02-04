@@ -115,7 +115,7 @@ def add_case(path_case, image_id):
 
 
 def main():
-    paths = glob.glob(PREPROCESSED_IMAGE_WSI_PATCH_DIR + "*.png")
+    paths = glob.glob(PREPROCESSED_IMAGE_WSI_GT_DIR + "*.png")
     rows = list()
     rows_temp = list()
     for index, patch_path in enumerate(paths):
