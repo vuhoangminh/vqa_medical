@@ -77,8 +77,8 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
 
         # compute output
         output = model(input_visual, input_question)
-        # loss = criterion(output, target_answer)
-        # meters['loss'].update(loss.item(), n=batch_size)
+        loss = criterion(output, target_answer)
+        meters['loss'].update(loss.item(), n=batch_size)
 
         # measure accuracy and record loss
         acc1, acc2 = utils.accuracy(output.data, target_answer.data, topk=(1, 2))
@@ -99,16 +99,15 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
         if i % print_freq == 0:
             print('Val: [{0}/{1}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                #   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'Acc@1 {acc1.val:.3f} ({acc1.avg:.3f})\t'
                   'Acc@5 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
                    i, len(loader), batch_time=meters['batch_time'],
-                   data_time=meters['data_time'], 
-                #    loss=meters['loss'],
+                   data_time=meters['data_time'], loss=meters['loss'],
                    acc1=meters['acc1'], acc2=meters['acc2']))
 
-    print(' * Acc@1 {acc1.avg:.3f} Acc@2 {acc2.avg:.3f}'
-          .format(acc1=meters['acc1'], acc2=meters['acc2']))
+    print(' * Acc@1 {acc1.avg:.3f} Acc@5 {acc2.avg:.3f}'
+          .format(acc1=meters['acc1'], acc2=meters['acc1']))
 
     logger.log_meters('val', n=epoch)
     return meters['acc1'].avg, results
