@@ -101,7 +101,7 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                 #   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'Acc@1 {acc1.val:.3f} ({acc1.avg:.3f})\t'
-                  'Acc@5 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
+                  'Acc@2 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
                    i, len(loader), batch_time=meters['batch_time'],
                    data_time=meters['data_time'], 
                 #    loss=meters['loss'],
