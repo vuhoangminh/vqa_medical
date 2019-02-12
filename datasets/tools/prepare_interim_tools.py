@@ -51,6 +51,7 @@ def process_df_to_build_json(segmentation_dict_tool=None):
         print(">> build full df")          
         df = pd_utils.create_full_imageid_quesid_questype(df, INTERIM_DIR)
         df.to_csv(processed_qa_per_question_path)
+        df = pd.read_csv(processed_qa_per_question_path)  
 
     train_questions_annotations = pd_utils.create_questions_annotations(df, 'train', INTERIM_DIR)
     val_questions_annotations = pd_utils.create_questions_annotations(df, 'val', INTERIM_DIR)
