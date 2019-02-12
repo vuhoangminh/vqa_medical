@@ -22,6 +22,9 @@
 !image_*.txt
 !train.txt
 !val.txt
+*.npz
+*.pkl
+logs/*
 
 
 

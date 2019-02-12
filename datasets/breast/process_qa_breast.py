@@ -150,7 +150,7 @@ def main():
         help='Options: train | trainval'
     )
     parser.add_argument('--nans',
-        default=8,
+        default=844,
         type=int,
         help='Number of top answers for the final classifications'
     )
