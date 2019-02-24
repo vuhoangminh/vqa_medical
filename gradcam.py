@@ -181,7 +181,8 @@ def process_image(path, net, finalconv_name):
     cv2.imwrite(out_path, result)
 
 
-def get_model_vqa(path="options/breast/minhmul_noatt_train.yaml"):
+def get_model_vqa(vqa_model="minhmul_noatt_train"):
+    path = "options/breast/{}.yaml".format(vqa_model)
     args = parser.parse_args()
     options = {
         'vqa': {
@@ -222,16 +223,142 @@ def get_model_vqa(path="options/breast/minhmul_noatt_train.yaml"):
     return model
 
 
-def process_vqa():
-    model = get_model_vqa()
+def summary_model(model, file=sys.stderr):
+    from functools import reduce
+    from torch.nn.modules.module import _addindent
+    def repr(model):
+        # We treat the extra repr like the sub-module, one item per line
+        extra_lines = []
+        extra_repr = model.extra_repr()
+        # empty string will be split into list ['']
+        if extra_repr:
+            extra_lines = extra_repr.split('\n')
+        child_lines = []
+        total_params = 0
+        for key, module in model._modules.items():
+            mod_str, num_params = repr(module)
+            mod_str = _addindent(mod_str, 2)
+            child_lines.append('(' + key + '): ' + mod_str)
+            total_params += num_params
+        lines = extra_lines + child_lines
 
-    path_ckpt_model = "logs/breast/minhmul_noatt_train/best_model.pth.tar"
+        for name, p in model._parameters.items():
+            total_params += reduce(lambda x, y: x * y, p.shape)
+
+        main_str = model._get_name() + '('
+        if lines:
+            # simple one-liner info, which most builtin Modules will use
+            if len(extra_lines) == 1 and not child_lines:
+                main_str += extra_lines[0]
+            else:
+                main_str += '\n  ' + '\n  '.join(lines) + '\n'
+
+        main_str += ')'
+        if file is sys.stderr:
+            main_str += ', \033[92m{:,}\033[0m params'.format(total_params)
+        else:
+            main_str += ', {:,} params'.format(total_params)
+        return main_str, total_params
+
+    string, count = repr(model)
+    if file is not None:
+        print(string, file=file)
+    return count
+
+
+def process_vqa(vqa_model="minhmul_noatt_train"):
+    model = get_model_vqa(vqa_model=vqa_model)
+
+    path_ckpt_model = "logs/breast/{}/best_model.pth.tar".format(vqa_model)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if os.path.isfile(path_ckpt_model):
         model_state = torch.load(path_ckpt_model, map_location=device)
         model.load_state_dict(model_state)
     print(model)
+
+    print(model._modules)
+
+
+    params = list(model.parameters())
+    weight_softmax = np.squeeze(params[-2].data.numpy())
+    # summary_model(model)
     return 0
+
+
+def test_vqa(vqa_model="minhmul_noatt_train"):
+    path = "options/breast/{}.yaml".format(vqa_model)
+    args = parser.parse_args()
+    options = {
+        'vqa': {
+            'trainsplit': args.vqa_trainsplit
+        },
+        'logs': {
+            'dir_logs': args.dir_logs
+        },
+        'model': {
+            'arch': args.arch,
+            'seq2vec': {
+                'type': args.st_type,
+                'dropout': args.st_dropout,
+                'fixed_emb': args.st_fixed_emb
+            }
+        },
+        'optim': {
+            'lr': args.learning_rate,
+            'batch_size': args.batch_size,
+            'epochs': args.epochs
+        }
+    }
+    with open(path, 'r') as handle:
+        options_yaml = yaml.load(handle)
+    options = vqa_utils.update_values(options, options_yaml)
+    if 'vgenome' not in options:
+        options['vgenome'] = None
+
+    trainset = datasets.factory_VQA(options['vqa']['trainsplit'],
+                                    options['vqa'],
+                                    options['coco'],
+                                    options['vgenome'])
+
+    train_loader = trainset.data_loader(batch_size=1,
+                                        num_workers=0,
+                                        shuffle=True)
+
+
+    # for i in range(10):
+    #     for batch in train_loader:
+    dataloader_iterator = iter(train_loader)
+    for i in range(5):
+        try:
+            data = next(dataloader_iterator)
+        except StopIteration:
+            dataloader_iterator = iter(train_loader)
+            data, target = next(dataloader_iterator)
+
+
+
+
+
+
+    # from torch.autograd import Variable
+    # for i, sample in enumerate(train_loader):
+    #     batch_size = sample['visual'].size(0)
+
+    #     input_visual   = Variable(sample['visual'])
+    #     input_question = Variable(sample['question'])
+    #     target_answer  = Variable(sample['answer'].cuda(async=True))
+
+
+    # dataloader_iterator = iter(train_loader)
+    # for i in range(5):
+    #     try:
+    #         data, target = next(dataloader_iterator)
+    #     except StopIteration:
+    #         dataloader_iterator = iter(train_loader)
+    #         data, target = next(dataloader_iterator)
+        
+
+    return train_loader
 
 
 def main():
@@ -244,5 +371,7 @@ def main():
 
 
 if __name__ == '__main__':
-    # main()
-    process_vqa()
+    main()
+    # process_vqa("minhmul_att_train")
+    # process_vqa("minhmul_noatt_train")
+    # test_vqa("minhmul_noatt_train")
