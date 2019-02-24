@@ -371,7 +371,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    # main()
     # process_vqa("minhmul_att_train")
     # process_vqa("minhmul_noatt_train")
+    process_vqa("minhmul_noatt_train_2048")
     # test_vqa("minhmul_noatt_train")
