@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/breast/minhmul_noatt_train
+    dir_logs: logs/breast/minhmul_noatt_train_2048
 vqa:
     dataset: VQA
     dir: data/vqa_breast

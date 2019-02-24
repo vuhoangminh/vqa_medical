@@ -139,9 +139,6 @@ def main():
     model = models.factory(options['model'],
                            trainset.vocab_words(), trainset.vocab_answers(),
                            cuda=True, data_parallel=True)
-    
-    model = nn.DataParallel(model, device_ids=[0, 1])
-
     criterion = criterions.factory(options['vqa'], cuda=True)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
                             options['optim']['lr'])
