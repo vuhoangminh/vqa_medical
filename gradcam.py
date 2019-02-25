@@ -181,6 +181,71 @@ def process_image(path, net, finalconv_name):
     cv2.imwrite(out_path, result)
 
 
+def process_vqa_sample(path, net, finalconv_name="linear_classif"):
+    net.eval()
+
+    # hook the feature extractor
+    features_blobs = []
+
+    def hook_feature(module, input, output):
+        features_blobs.append(output.data.cpu().numpy())
+
+    net._modules.get(finalconv_name).register_forward_hook(hook_feature)
+
+    # get the softmax weight
+    params = list(net.parameters())
+    weight_softmax = np.squeeze(params[-2].data.numpy())
+
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+    preprocess = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        normalize
+    ])
+
+    img_name = paths_utils.get_filename_without_extension(path)
+    img_pil = Image.open(path)
+    in_path = "temp/{}_in.jpg".format(img_name)
+    img_pil.save(in_path)
+
+    img_tensor = preprocess(img_pil)
+    img_variable = Variable(img_tensor.unsqueeze(0))
+    logit = net(img_variable)
+
+    # download the imagenet category list
+    classes = {
+        0: "Benign",
+        1: "InSitu",
+        2: "Invasive",
+        3: "Normal"
+    }
+
+    h_x = F.softmax(logit, dim=1).data.squeeze()
+    probs, idx = h_x.sort(0, True)
+    probs = probs.numpy()
+    idx = idx.numpy()
+
+    # output the prediction
+    for i in range(0, 4):
+        print('{:.3f} -> {}'.format(probs[i], classes[idx[i]]))
+
+    # generate class activation mapping for the top1 prediction
+    CAMs = get_gadcam_image(features_blobs[0], weight_softmax, [idx[0]])
+
+    # render the CAM and output
+    print('output CAM.jpg for the top1 prediction: %s' % classes[idx[0]])
+    img = cv2.imread(in_path)
+    height, width, _ = img.shape
+    heatmap = cv2.applyColorMap(cv2.resize(
+        CAMs[0], (width, height)), cv2.COLORMAP_JET)
+    result = heatmap * 0.3 + img * 0.5
+    out_path = "temp/{}_out.jpg".format(img_name)
+    cv2.imwrite(out_path, result)
+
+
 def get_model_vqa(vqa_model="minhmul_noatt_train"):
     path = "options/breast/{}.yaml".format(vqa_model)
     args = parser.parse_args()
@@ -220,69 +285,24 @@ def get_model_vqa(vqa_model="minhmul_noatt_train"):
                                trainset.vocab_words(), trainset.vocab_answers(),
                                cuda=False, data_parallel=False)
 
-    return model
-
-
-def summary_model(model, file=sys.stderr):
-    from functools import reduce
-    from torch.nn.modules.module import _addindent
-    def repr(model):
-        # We treat the extra repr like the sub-module, one item per line
-        extra_lines = []
-        extra_repr = model.extra_repr()
-        # empty string will be split into list ['']
-        if extra_repr:
-            extra_lines = extra_repr.split('\n')
-        child_lines = []
-        total_params = 0
-        for key, module in model._modules.items():
-            mod_str, num_params = repr(module)
-            mod_str = _addindent(mod_str, 2)
-            child_lines.append('(' + key + '): ' + mod_str)
-            total_params += num_params
-        lines = extra_lines + child_lines
-
-        for name, p in model._parameters.items():
-            total_params += reduce(lambda x, y: x * y, p.shape)
-
-        main_str = model._get_name() + '('
-        if lines:
-            # simple one-liner info, which most builtin Modules will use
-            if len(extra_lines) == 1 and not child_lines:
-                main_str += extra_lines[0]
-            else:
-                main_str += '\n  ' + '\n  '.join(lines) + '\n'
-
-        main_str += ')'
-        if file is sys.stderr:
-            main_str += ', \033[92m{:,}\033[0m params'.format(total_params)
-        else:
-            main_str += ', {:,} params'.format(total_params)
-        return main_str, total_params
-
-    string, count = repr(model)
-    if file is not None:
-        print(string, file=file)
-    return count
-
-
-def process_vqa(vqa_model="minhmul_noatt_train"):
-    model = get_model_vqa(vqa_model=vqa_model)
-
+    # load checkpoint
     path_ckpt_model = "logs/breast/{}/best_model.pth.tar".format(vqa_model)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if os.path.isfile(path_ckpt_model):
         model_state = torch.load(path_ckpt_model, map_location=device)
         model.load_state_dict(model_state)
+    return model
+
+
+def process_vqa(vqa_model="minhmul_noatt_train"):
+    model = get_model_vqa(vqa_model=vqa_model)
     print(model)
-
     print(model._modules)
-
-
     params = list(model.parameters())
-    weight_softmax = np.squeeze(params[-2].data.numpy())
-    # summary_model(model)
-    return 0
+
+    classif_w_params = np.squeeze(params[10].data.numpy())
+    classif_b_params = np.squeeze(params[11].data.numpy())
+    return classif_w_params, classif_b_params
 
 
 def test_vqa(vqa_model="minhmul_noatt_train"):
@@ -334,11 +354,6 @@ def test_vqa(vqa_model="minhmul_noatt_train"):
         except StopIteration:
             dataloader_iterator = iter(train_loader)
             data, target = next(dataloader_iterator)
-
-
-
-
-
 
     # from torch.autograd import Variable
     # for i, sample in enumerate(train_loader):
