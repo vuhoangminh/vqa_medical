@@ -73,7 +73,7 @@ parser.add_argument('-ho', '--help_opt', dest='help_opt', action='store_true',
                     help='show selected options before running')
 
 
-def load_image_model():
+def load_image_model(path):
     def rename_key(state_dict):
         old_keys_list = state_dict.keys()
         for old_key in old_keys_list:
@@ -88,7 +88,8 @@ def load_image_model():
             [(new_key, v) if k == old_key else (k, v) for k, v in state_dict.items()])
         return new_state_dict
 
-    filename = 'C:/Users/minhm/Documents/GitHub/vqa_idrid/data/image_models/best_resnet152_crossentropyloss_breast.pth.tar'
+    filename = path + 'data/image_models/best_resnet152_crossentropyloss_breast.pth.tar'
+
     model = models.resnet152()
 
     device = torch.device("cuda" if torch.cuda.is_available()
@@ -181,6 +182,191 @@ def process_image(path, net, finalconv_name):
     cv2.imwrite(out_path, result)
 
 
+def load_dict_torch_031(model, path_ckpt):
+    import torch._utils
+    try:
+        torch._utils._rebuild_tensor_v2
+    except AttributeError:
+        def _rebuild_tensor_v2(storage, storage_offset, size, stride, requires_grad, backward_hooks):
+            tensor = torch._utils._rebuild_tensor(storage, storage_offset, size, stride)
+            tensor.requires_grad = requires_grad
+            tensor._backward_hooks = backward_hooks
+            return tensor
+        torch._utils._rebuild_tensor_v2 = _rebuild_tensor_v2
+        
+    model_dict = torch.load(path_ckpt)
+    model_dict_clone = model_dict.copy() # We can't mutate while iterating
+    for key, value in model_dict_clone.items():
+        if key.endswith(('running_mean', 'running_var')):
+            del model_dict[key]
+    model.load_state_dict(model_dict, False)
+    return model
+
+
+def get_model_vqa(vqa_model="minhmul_noatt_train"):
+    path = "options/breast/{}.yaml".format(vqa_model)
+    args = parser.parse_args()
+    options = {
+        'vqa': {
+            'trainsplit': args.vqa_trainsplit
+        },
+        'logs': {
+            'dir_logs': args.dir_logs
+        },
+        'model': {
+            'arch': args.arch,
+            'seq2vec': {
+                'type': args.st_type,
+                'dropout': args.st_dropout,
+                'fixed_emb': args.st_fixed_emb
+            }
+        },
+        'optim': {
+            'lr': args.learning_rate,
+            'batch_size': args.batch_size,
+            'epochs': args.epochs
+        }
+    }
+    with open(path, 'r') as handle:
+        options_yaml = yaml.load(handle)
+    options = vqa_utils.update_values(options, options_yaml)
+    if 'vgenome' not in options:
+        options['vgenome'] = None
+
+    trainset = datasets.factory_VQA(options['vqa']['trainsplit'],
+                                    options['vqa'],
+                                    options['coco'],
+                                    options['vgenome'])
+
+    model = models_vqa.factory(options['model'],
+                               trainset.vocab_words(), trainset.vocab_answers(),
+                               cuda=False, data_parallel=False)
+
+    # load checkpoint
+    path_ckpt_model = "logs/breast/{}/best_model.pth.tar".format(vqa_model)
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if os.path.isfile(path_ckpt_model):
+        # model_state = torch.load(path_ckpt_model, map_location=device)
+        # style_model.load_state_dict(torch.load(args.model))
+        
+        # model_state = torch.load(path_ckpt_model)
+        # model.load_state_dict(model_state)
+
+
+        model = load_dict_torch_031(model, path_ckpt_model)
+
+
+    return model
+
+
+def get_data(vqa_model="minhmul_noatt_train"):
+    path = "options/breast/{}.yaml".format(vqa_model)
+    args = parser.parse_args()
+    options = {
+        'vqa': {
+            'trainsplit': args.vqa_trainsplit
+        },
+        'logs': {
+            'dir_logs': args.dir_logs
+        },
+        'model': {
+            'arch': args.arch,
+            'seq2vec': {
+                'type': args.st_type,
+                'dropout': args.st_dropout,
+                'fixed_emb': args.st_fixed_emb
+            }
+        },
+        'optim': {
+            'lr': args.learning_rate,
+            'batch_size': args.batch_size,
+            'epochs': args.epochs
+        }
+    }
+    with open(path, 'r') as handle:
+        options_yaml = yaml.load(handle)
+    options = vqa_utils.update_values(options, options_yaml)
+    if 'vgenome' not in options:
+        options['vgenome'] = None
+
+    trainset = datasets.factory_VQA(options['vqa']['trainsplit'],
+                                    options['vqa'],
+                                    options['coco'],
+                                    options['vgenome'])
+
+    train_loader = trainset.data_loader(batch_size=1,
+                                        num_workers=0,
+                                        shuffle=True)
+
+
+    data = []
+
+    # for i, sample1 in enumerate(train_loader):
+    #     print(sample1)
+
+
+    dataloader_iterator = iter(train_loader)
+    for i in range(5):
+        try:
+            sample = next(dataloader_iterator)
+            data.append(sample)
+        except:
+            print("something wrong")      
+
+    return data
+
+
+def process_vqa(vqa_model="minhmul_noatt_train", finalconv_name="linear_classif"):
+    model = get_model_vqa(vqa_model=vqa_model)
+    net = model
+    print(model)
+    print(model._modules)
+    params = list(model.parameters())
+
+    if vqa_model == "minhmul_noatt_train":
+        classif_w_params = np.squeeze(params[10].data.numpy())
+        classif_b_params = np.squeeze(params[11].data.numpy())
+
+    data = get_data(vqa_model)
+
+    net.eval()
+    # hook the feature extractor
+    features_blobs = []
+
+    def hook_feature(module, input, output):
+        features_blobs.append(output.data.cpu().numpy())    
+
+    net._modules.get(finalconv_name).register_forward_hook(hook_feature)
+
+
+    sample = data[0]
+    # input_visual   = Variable(sample['visual'].unsqueeze(0))
+    # input_question = Variable(sample['question'].unsqueeze(0))
+    # input_visual   = Variable(sample['visual'].squeeze())
+    # input_question = Variable(sample['question'].squeeze())
+    
+    input_visual   = Variable(sample['visual'])
+    input_question = Variable(sample['question'])
+
+    # input_visual   = Variable(sample['visual'].data)
+    # input_question = Variable(sample['question'].data)
+
+    target_answer  = Variable(sample['answer'].cuda(async=True))
+
+    # compute output
+    logit = net(input_visual, input_question)
+
+    h_x = F.softmax(logit, dim=1).data.squeeze()
+    probs, idx = h_x.sort(0, True)
+    probs = probs.numpy()
+    idx = idx.numpy() 
+
+
+
+
+    return classif_w_params, classif_b_params
+
+
 def process_vqa_sample(path, net, finalconv_name="linear_classif"):
     net.eval()
 
@@ -246,148 +432,32 @@ def process_vqa_sample(path, net, finalconv_name="linear_classif"):
     cv2.imwrite(out_path, result)
 
 
-def get_model_vqa(vqa_model="minhmul_noatt_train"):
-    path = "options/breast/{}.yaml".format(vqa_model)
-    args = parser.parse_args()
-    options = {
-        'vqa': {
-            'trainsplit': args.vqa_trainsplit
-        },
-        'logs': {
-            'dir_logs': args.dir_logs
-        },
-        'model': {
-            'arch': args.arch,
-            'seq2vec': {
-                'type': args.st_type,
-                'dropout': args.st_dropout,
-                'fixed_emb': args.st_fixed_emb
-            }
-        },
-        'optim': {
-            'lr': args.learning_rate,
-            'batch_size': args.batch_size,
-            'epochs': args.epochs
-        }
-    }
-    with open(path, 'r') as handle:
-        options_yaml = yaml.load(handle)
-    options = vqa_utils.update_values(options, options_yaml)
-    if 'vgenome' not in options:
-        options['vgenome'] = None
-
-    trainset = datasets.factory_VQA(options['vqa']['trainsplit'],
-                                    options['vqa'],
-                                    options['coco'],
-                                    options['vgenome'])
-
-    model = models_vqa.factory(options['model'],
-                               trainset.vocab_words(), trainset.vocab_answers(),
-                               cuda=False, data_parallel=False)
-
-    # load checkpoint
-    path_ckpt_model = "logs/breast/{}/best_model.pth.tar".format(vqa_model)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if os.path.isfile(path_ckpt_model):
-        model_state = torch.load(path_ckpt_model, map_location=device)
-        model.load_state_dict(model_state)
-    return model
-
-
-def process_vqa(vqa_model="minhmul_noatt_train"):
-    model = get_model_vqa(vqa_model=vqa_model)
-    print(model)
-    print(model._modules)
-    params = list(model.parameters())
-
-    classif_w_params = np.squeeze(params[10].data.numpy())
-    classif_b_params = np.squeeze(params[11].data.numpy())
-    return classif_w_params, classif_b_params
-
-
-def test_vqa(vqa_model="minhmul_noatt_train"):
-    path = "options/breast/{}.yaml".format(vqa_model)
-    args = parser.parse_args()
-    options = {
-        'vqa': {
-            'trainsplit': args.vqa_trainsplit
-        },
-        'logs': {
-            'dir_logs': args.dir_logs
-        },
-        'model': {
-            'arch': args.arch,
-            'seq2vec': {
-                'type': args.st_type,
-                'dropout': args.st_dropout,
-                'fixed_emb': args.st_fixed_emb
-            }
-        },
-        'optim': {
-            'lr': args.learning_rate,
-            'batch_size': args.batch_size,
-            'epochs': args.epochs
-        }
-    }
-    with open(path, 'r') as handle:
-        options_yaml = yaml.load(handle)
-    options = vqa_utils.update_values(options, options_yaml)
-    if 'vgenome' not in options:
-        options['vgenome'] = None
-
-    trainset = datasets.factory_VQA(options['vqa']['trainsplit'],
-                                    options['vqa'],
-                                    options['coco'],
-                                    options['vgenome'])
-
-    train_loader = trainset.data_loader(batch_size=1,
-                                        num_workers=0,
-                                        shuffle=True)
-
-
-    # for i in range(10):
-    #     for batch in train_loader:
-    dataloader_iterator = iter(train_loader)
-    for i in range(5):
-        try:
-            data = next(dataloader_iterator)
-        except StopIteration:
-            dataloader_iterator = iter(train_loader)
-            data, target = next(dataloader_iterator)
-
-    # from torch.autograd import Variable
-    # for i, sample in enumerate(train_loader):
-    #     batch_size = sample['visual'].size(0)
-
-    #     input_visual   = Variable(sample['visual'])
-    #     input_question = Variable(sample['question'])
-    #     target_answer  = Variable(sample['answer'].cuda(async=True))
-
-
-    # dataloader_iterator = iter(train_loader)
-    # for i in range(5):
-    #     try:
-    #         data, target = next(dataloader_iterator)
-    #     except StopIteration:
-    #         dataloader_iterator = iter(train_loader)
-    #         data, target = next(dataloader_iterator)
-        
-
-    return train_loader
-
 
 def main():
-    img_dirs = glob.glob(os.path.join(
-        "C:/Users/minhm/Documents/GitHub/vqa_idrid/temp/test/", "*.jpg"))
+    laptop_path = "C:/Users/minhm/Documents/GitHub/vqa_idrid/"
+    desktop_path = "/home/minhvu/github/vqa_idrid/"
+
+    is_laptop = False
+    if is_laptop:
+        path_dir = laptop_path
+        ext = "*.jpg"
+    else:
+        path_dir = desktop_path
+        ext = "*.png"
+
+    path = path_dir + "temp/test/"
+    img_dirs = glob.glob(os.path.join(path, ext))
+    
     for path in img_dirs:
-        net = load_image_model()
+        net = load_image_model(path_dir)
         finalconv_name = "layer4"
         process_image(path, net, finalconv_name)
 
 
 if __name__ == '__main__':
     # main()
+    
     # process_vqa("minhmul_att_train")
     # process_vqa("minhmul_noatt_train")
+
     process_vqa("minhmul_noatt_train_2048")
-    # test_vqa("minhmul_noatt_train")
