@@ -56,7 +56,7 @@ parser.add_argument('--st_type',
                     help='skipthoughts type')
 parser.add_argument('--st_dropout', type=float)
 parser.add_argument('--st_fixed_emb', default=None, type=utils.str2bool,
-                    help='backprop on embedding')                    
+                    help='backprop on embedding')
 # model options
 parser.add_argument('--arch', choices=models_vqa.model_names,
                     help='vqa model architecture: ' +
@@ -222,9 +222,7 @@ def get_gadcam_image(feature_conv, weight_softmax, class_idx):
     return output_cam
 
 
-def get_gradcam_from_image_model(path_img, cnn, finalconv_name = "layer4"):
-
-    # cnn = load_image_model()
+def get_gradcam_from_image_model(path_img, cnn, finalconv_name="layer4"):
 
     cnn.eval()
 
@@ -290,16 +288,92 @@ def get_gradcam_from_image_model(path_img, cnn, finalconv_name = "layer4"):
     out_path = "temp/{}_cnn.jpg".format(img_name)
     cv2.imwrite(out_path, result)
 
-    return result, out_path
+    return result, out_path, features_blobs
 
 
-def get_gradcam_from_noatt_model():
-    return 0
+def get_gadcam_vqa(feature_conv, weight_softmax, weight_softmax_b, class_idx):
+    # generate the class activation maps upsample to 256x256
+    size_upsample = (256, 256)
+    bz, nc, h, w = feature_conv.shape
+    output_cam = []
+    for idx in class_idx:
+        cam = weight_softmax[idx].dot(feature_conv.reshape((nc, h*w)))
+        cam = cam.reshape(h, w)
+        cam = cam - np.min(cam)
+        cam_img = cam / np.max(cam)
+        cam_img = np.uint8(255 * cam_img)
+        output_cam.append(cv2.resize(cam_img, size_upsample))
+    return output_cam
+
+
+def get_gradcam_from_vqa_model(visual_features,
+                               question_features,
+                               features_blobs_visual,
+                               ans,
+                               path_img,
+                               cnn,
+                               model,
+                               vqa_model="minhmul_noatt_train_2048",
+                               finalconv_name="linear_classif"):
+
+    model.eval()
+
+    # hook the feature extractor
+    features_blobs = []
+
+    def hook_feature(module, input, output):
+        features_blobs.append(output.data.cpu().numpy())
+
+    model._modules.get(finalconv_name).register_forward_hook(hook_feature)
+
+    # get the softmax weight
+    params = list(model.parameters())
+    weight_softmax = np.squeeze(params[-2].data.cpu().numpy())
+
+    if "noatt" in vqa_model:
+        classif_w_params = np.squeeze(params[10].data.cpu().numpy())
+        classif_b_params = np.squeeze(params[11].data.cpu().numpy())
+    else:
+        classif_w_params = np.squeeze(params[26].data.cpu().numpy())
+        temp_classif_w_params = np.zeros((classif_w_params.shape[0], 2048))
+        temp_classif_w_params = (classif_w_params[:, 0:2048] + classif_w_params[:, 2048:2048*2] + classif_w_params[:,2048*2:2048*3] + classif_w_params[:,2048*3:2048*4]/4)
+        classif_w_params = temp_classif_w_params
+        classif_b_params = np.squeeze(params[27].data.cpu().numpy())
+
+    logit = model(visual_features, question_features)
+
+    h_x = F.softmax(logit, dim=1).data.squeeze()
+    probs, idx = h_x.sort(0, True)
+    probs = probs.cpu().numpy()
+    idx = idx.cpu().numpy()
+
+    CAMs = get_gadcam_vqa(features_blobs_visual[0],
+                          classif_w_params, classif_b_params, [idx[0]])
+
+    # render the CAM and output
+    print('output CAM.jpg for the top1 prediction: %s' % ans["ans"][idx[0]])
+
+    img_name = paths_utils.get_filename_without_extension(path_img)
+
+    img = cv2.imread(path_img)
+    height, width, _ = img.shape
+    heatmap = cv2.applyColorMap(cv2.resize(
+        CAMs[0], (width, height)), cv2.COLORMAP_JET)
+    result = heatmap * 0.3 + img * 0.5
+    if "noatt" in vqa_model:
+        out_path = "temp/{}_noatt.jpg".format(img_name)
+    else:
+        out_path = "temp/{}_att.jpg".format(img_name)
+    cv2.imwrite(out_path, result)
+
+    im_out = Image.open(out_path)
+
+    im_out.show()
+
+    return logit
 
 
 def initialize(args, dataset="breast"):
-    finalconv_name = "linear_classif"
-
     options = {
         'logs': {
             'dir_logs': args.dir_logs
@@ -309,7 +383,7 @@ def initialize(args, dataset="breast"):
         with open(args.path_opt, 'r') as handle:
             options_yaml = yaml.load(handle)
         options = utils.update_values(options, options_yaml)
-    
+
     print("\n>> load trainset...")
     trainset = datasets.factory_VQA(options['vqa']['trainsplit'],
                                     options['vqa'],
@@ -342,26 +416,33 @@ def process_one_example(args, cnn, model, trainset, path_img, question_str, data
     print("\n>> extract question features...")
     question_features = process_question(question_str, trainset)
 
-
     print("\n>> get answers...")
     answer, answer_sm = process_answer(
         model(visual_features, question_features), trainset, model)
 
     print("\n>> get gradcam of cnn...")
-    result, out_path = get_gradcam_from_image_model(path_img, cnn.net)
+    result, out_path, features_blobs_visual = get_gradcam_from_image_model(
+        path_img, cnn.net)
 
     print(question_str)
     print(answer)
-    im = Image.open(path_img)
-    im.show()
-    im = Image.open(out_path)
-    im.show()
+    im_in = Image.open(path_img)
+    im_in.show()
+    im_out = Image.open(out_path)
+    im_out.show()
+
+    return visual_features, question_features, answer, answer_sm, features_blobs_visual
 
 
+def update_args(args, vqa_model="minhmul_noatt_train_2048", dataset="breast"):
+    args.vqa_model = vqa_model
+    args.dir_logs = "logs/{}/{}".format(dataset, vqa_model)
+    args.path_opt = "logs/{}/{}/{}.yaml".format(dataset, vqa_model, vqa_model)
+    return args
 
 
 def main(dataset="breast"):
-    global args, options, model, cnn, transform, trainset
+    global args
     args = parser.parse_args()
 
     laptop_path = "C:/Users/minhm/Documents/GitHub/vqa_idrid/"
@@ -378,14 +459,55 @@ def main(dataset="breast"):
     path = path_dir + "temp/test/"
     img_dirs = glob.glob(os.path.join(path, ext))
 
-    cnn, model, trainset = initialize(args, dataset=dataset)
     for path_img in img_dirs:
         if dataset == "breast":
             question_str = "how many classes are there?"
-        process_one_example(args, cnn, model, trainset, path_img, question_str, dataset=dataset)
-    
-    
+
+        args = update_args(
+            args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
+
+        cnn, model, trainset = initialize(args, dataset=dataset)
+        visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
+                                                                                                        cnn,
+                                                                                                        model,
+                                                                                                        trainset,
+                                                                                                        path_img,
+                                                                                                        question_str,
+                                                                                                        dataset=dataset)
+
+        get_gradcam_from_vqa_model(visual_features,
+                                   question_features,
+                                   features_blobs_visual,
+                                   ans,
+                                   path_img,
+                                   cnn,
+                                   model,
+                                   vqa_model="minhmul_noatt_train_2048",
+                                   finalconv_name="linear_classif")
+
+        args = update_args(
+            args, vqa_model="minhmul_att_train_2048", dataset=dataset)
+
+        cnn, model, trainset = initialize(args, dataset=dataset)
+        visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
+                                                                                                        cnn,
+                                                                                                        model,
+                                                                                                        trainset,
+                                                                                                        path_img,
+                                                                                                        question_str,
+                                                                                                        dataset=dataset)
+
+        get_gradcam_from_vqa_model(visual_features,
+                                   question_features,
+                                   features_blobs_visual,
+                                   ans,
+                                   path_img,
+                                   cnn,
+                                   model,
+                                   vqa_model="minhmul_att_train_2048",
+                                   finalconv_name="linear_classif")
+
+
 if __name__ == '__main__':
     dataset = "breast"
     main(dataset)
-
