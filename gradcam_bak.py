@@ -1,217 +1,142 @@
-from collections import OrderedDict
-import torch
-from torch.autograd import Variable
-from torch.autograd import Function
-from torchvision import models
-from torchvision import utils
-import cv2
-import sys
-import numpy as np
-import argparse
+import yaml
+import vqa.lib.utils as vqa_utils
+import vqa.datasets as datasets
+import vqa.models as models_vqa
+import datasets.utils.paths_utils as paths_utils
 from torchsummary import summary
+import argparse
+import glob
+from torch.autograd import Function
+import torch
+from collections import OrderedDict
+import pdb
+import cv2
+import numpy as np
+from torch.nn import functional as F
+from torch.autograd import Variable
+from torchvision import models, transforms, utils
+from PIL import Image
+import requests
+import io
+import os
+import sys
+import json
 
 
-class FeatureExtractor():
-    """ Class for extracting activations and 
-    registering gradients from targetted intermediate layers """
-
-    def __init__(self, model, target_layers):
-        self.model = model
-        self.target_layers = target_layers
-        self.gradients = []
-
-    def save_gradient(self, grad):
-        self.gradients.append(grad)
-
-    def __call__(self, x):
-        outputs = []
-        self.gradients = []
-        for name, module in self.model._modules.items():
-            x = module(x)
-            if name in self.target_layers:
-                x.register_hook(self.save_gradient)
-                outputs += [x]
-        return outputs, x
-
-
-class ModelOutputs():
-    """ Class for making a forward pass, and getting:
-    1. The network output.
-    2. Activations from intermeddiate targetted layers.
-    3. Gradients from intermeddiate targetted layers. """
-
-    def __init__(self, model, target_layers):
-        self.model = model
-        self.feature_extractor = FeatureExtractor(
-            self.model.features, target_layers)
-
-    def get_gradients(self):
-        return self.feature_extractor.gradients
-
-    def __call__(self, x):
-        target_activations, output = self.feature_extractor(x)
-        output = output.view(output.size(0), -1)
-        output = self.model.classifier(output)
-        return target_activations, output
-
-
-def preprocess_image(img):
-    means = [0.485, 0.456, 0.406]
-    stds = [0.229, 0.224, 0.225]
-
-    preprocessed_img = img.copy()[:, :, ::-1]
-    for i in range(3):
-        preprocessed_img[:, :, i] = preprocessed_img[:, :, i] - means[i]
-        preprocessed_img[:, :, i] = preprocessed_img[:, :, i] / stds[i]
-    preprocessed_img = \
-        np.ascontiguousarray(np.transpose(preprocessed_img, (2, 0, 1)))
-    preprocessed_img = torch.from_numpy(preprocessed_img)
-    preprocessed_img.unsqueeze_(0)
-    input = Variable(preprocessed_img, requires_grad=True)
-    return input
+parser = argparse.ArgumentParser(
+    description='Train/Evaluate models',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+##################################################
+# yaml options file contains all default choices #
+parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
+                    help='path to a yaml options file')
+################################################
+# change cli options to modify default choices #
+# logs options
+parser.add_argument('--dir_logs', type=str, help='dir logs')
+# data options
+parser.add_argument('--vqa_trainsplit', type=str,
+                    choices=['train', 'trainval'], default="train")
+# model options
+parser.add_argument('--arch', choices=models_vqa.model_names,
+                    help='vqa model architecture: ' +
+                    ' | '.join(models_vqa.model_names))
+parser.add_argument('--st_type',
+                    help='skipthoughts type')
+parser.add_argument('--st_dropout', type=float)
+parser.add_argument('--st_fixed_emb', default=None, type=vqa_utils.str2bool,
+                    help='backprop on embedding')
+# optim options
+parser.add_argument('-lr', '--learning_rate', type=float,
+                    help='initial learning rate')
+parser.add_argument('-b', '--batch_size', type=int,
+                    help='mini-batch size')
+parser.add_argument('--epochs', type=int,
+                    help='number of total epochs to run')
+# options not in yaml file
+parser.add_argument('--start_epoch', default=0, type=int,
+                    help='manual epoch number (useful on restarts)')
+parser.add_argument('--resume', default='', type=str,
+                    help='path to latest checkpoint')
+parser.add_argument('--save_model', default=True, type=vqa_utils.str2bool,
+                    help='able or disable save model and optim state')
+parser.add_argument('--save_all_from', type=int,
+                    help='''delete the preceding checkpoint until an epoch,'''
+                         ''' then keep all (useful to save disk space)')''')
+parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
+                    help='evaluate model on validation and test set')
+parser.add_argument('-j', '--workers', default=2, type=int,
+                    help='number of data loading workers')
+parser.add_argument('--print_freq', '-p', default=2, type=int,
+                    help='print frequency')
+################################################
+parser.add_argument('-ho', '--help_opt', dest='help_opt', action='store_true',
+                    help='show selected options before running')
 
 
-def show_cam_on_image(img, mask):
-    heatmap = cv2.applyColorMap(np.uint8(255*mask), cv2.COLORMAP_JET)
-    heatmap = np.float32(heatmap) / 255
-    cam = heatmap + np.float32(img)
-    cam = cam / np.max(cam)
-    cv2.imwrite("cam.jpg", np.uint8(255 * cam))
+def process_visual(path_img, path_dir, vqa_model="minhmul_noatt_train_2048"):
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+    transform = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        normalize
+    ])
+
+    visual_PIL = Image.open(path_img)
+    visual_tensor = transform(visual_PIL)
+    visual_data = torch.FloatTensor(1, 3,
+                                    visual_tensor.size(1),
+                                    visual_tensor.size(2))
+    visual_data[0][0] = visual_tensor[0]
+    visual_data[0][1] = visual_tensor[1]
+    visual_data[0][2] = visual_tensor[2]
+    print('visual', visual_data.size(), visual_data.mean())
+
+    visual_data = visual_data.cuda()
+    visual_input = Variable(visual_data, volatile=True)
+
+    cnn = load_image_model(path_dir)
+
+    visual_features = cnn(visual_input)
+    if 'noatt' in vqa_model:
+        nb_regions = visual_features.size(2) * visual_features.size(3)
+        visual_features = visual_features.sum(
+            3).sum(2).div(nb_regions).view(-1, 2048)
+    return visual_features
 
 
-class GradCam:
-    def __init__(self, model, target_layer_names, use_cuda):
-        self.model = model
-        self.model.eval()
-        self.cuda = use_cuda
-        if self.cuda:
-            self.model = model.cuda()
-
-        self.extractor = ModelOutputs(self.model, target_layer_names)
-
-    def forward(self, input):
-        return self.model(input)
-
-    def __call__(self, input, index=None):
-        if self.cuda:
-            features, output = self.extractor(input.cuda())
+def process_question(question_str):
+    question_tokens = tokenize_mcb(question_str)
+    question_data = torch.LongTensor(1, len(question_tokens))
+    for i, word in enumerate(question_tokens):
+        if word in trainset.word_to_wid:
+            question_data[0][i] = trainset.word_to_wid[word]
         else:
-            features, output = self.extractor(input)
+            question_data[0][i] = trainset.word_to_wid['UNK']
+    if args.cuda:
+        question_data = question_data.cuda(async=True)
+    question_input = Variable(question_data, volatile=True)
+    print('question', question_str, question_tokens, question_data)
 
-        if index == None:
-            index = np.argmax(output.cpu().data.numpy())
-
-        one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
-        one_hot[0][index] = 1
-        one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
-        if self.cuda:
-            one_hot = torch.sum(one_hot.cuda() * output)
-        else:
-            one_hot = torch.sum(one_hot * output)
-
-        self.model.features.zero_grad()
-        self.model.classifier.zero_grad()
-        one_hot.backward(retain_graph=True)
-
-        grads_val = self.extractor.get_gradients()[-1].cpu().data.numpy()
-
-        target = features[-1]
-        target = target.cpu().data.numpy()[0, :]
-
-        weights = np.mean(grads_val, axis=(2, 3))[0, :]
-        cam = np.zeros(target.shape[1:], dtype=np.float32)
-
-        for i, w in enumerate(weights):
-            cam += w * target[i, :, :]
-
-        cam = np.maximum(cam, 0)
-        cam = cv2.resize(cam, (224, 224))
-        cam = cam - np.min(cam)
-        cam = cam / np.max(cam)
-        return cam
+    return question_input
 
 
-class GuidedBackpropReLU(Function):
-
-    def forward(self, input):
-        positive_mask = (input > 0).type_as(input)
-        output = torch.addcmul(torch.zeros(
-            input.size()).type_as(input), input, positive_mask)
-        self.save_for_backward(input, output)
-        return output
-
-    def backward(self, grad_output):
-        input, output = self.saved_tensors
-        grad_input = None
-
-        positive_mask_1 = (input > 0).type_as(grad_output)
-        positive_mask_2 = (grad_output > 0).type_as(grad_output)
-        grad_input = torch.addcmul(torch.zeros(input.size()).type_as(input), torch.addcmul(
-            torch.zeros(input.size()).type_as(input), grad_output, positive_mask_1), positive_mask_2)
-
-        return grad_input
+def process_answer(answer_var, trainset, model):
+    answer_sm = torch.nn.functional.softmax(Variable(answer_var.data[0].cpu()))
+    max_, aid = answer_sm.topk(5, 0, True, True)
+    ans = []
+    val = []
+    for i in range(5):
+        ans.append(trainset.aid_to_ans[aid.data[i]])
+        val.append(max_.data[i])
+    answer = {'ans': ans, 'val': val}
+    return answer, answer_sm
 
 
-class GuidedBackpropReLUModel:
-    def __init__(self, model, use_cuda):
-        self.model = model
-        self.model.eval()
-        self.cuda = use_cuda
-        if self.cuda:
-            self.model = model.cuda()
-
-        # replace ReLU with GuidedBackpropReLU
-        for idx, module in self.model.features._modules.items():
-            if module.__class__.__name__ == 'ReLU':
-                self.model.features._modules[idx] = GuidedBackpropReLU()
-
-    def forward(self, input):
-        return self.model(input)
-
-    def __call__(self, input, index=None):
-        if self.cuda:
-            output = self.forward(input.cuda())
-        else:
-            output = self.forward(input)
-
-        if index == None:
-            index = np.argmax(output.cpu().data.numpy())
-
-        one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
-        one_hot[0][index] = 1
-        one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
-        if self.cuda:
-            one_hot = torch.sum(one_hot.cuda() * output)
-        else:
-            one_hot = torch.sum(one_hot * output)
-
-        # self.model.features.zero_grad()
-        # self.model.classifier.zero_grad()
-        one_hot.backward(retain_graph=True)
-
-        output = input.grad.cpu().data.numpy()
-        output = output[0, :, :, :]
-
-        return output
-
-
-def get_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--use-cuda', action='store_true', default=False,
-                        help='Use NVIDIA GPU acceleration')
-    parser.add_argument('--image-path', type=str, default='./examples/both.png',
-                        help='Input image path')
-    args = parser.parse_args()
-    args.use_cuda = args.use_cuda and torch.cuda.is_available()
-    if args.use_cuda:
-        print("Using GPU for acceleration")
-    else:
-        print("Using CPU for computation")
-
-    return args
-
-
-def load_model():
+def load_image_model(path_dir):
     def rename_key(state_dict):
         old_keys_list = state_dict.keys()
         for old_key in old_keys_list:
@@ -220,15 +145,17 @@ def load_model():
             # print(new_key)
             state_dict = update_ordereddict(state_dict, old_key, new_key)
         return state_dict
+
     def update_ordereddict(state_dict, old_key, new_key):
         new_state_dict = OrderedDict(
             [(new_key, v) if k == old_key else (k, v) for k, v in state_dict.items()])
         return new_state_dict
 
-    filename = 'C:/Users/minhm/Documents/GitHub/vqa_idrid/data/image_models/best_resnet152_crossentropyloss_breast.pth.tar'
+    filename = path_dir + 'data/image_models/best_resnet152_crossentropyloss_breast.pth.tar'
+
     model = models.resnet152()
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # PyTorch v0.4.0
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # PyTorch v0.4.0
     checkpoint = torch.load(filename, map_location=device)
     state_dict = checkpoint['state_dict']
     state_dict = rename_key(state_dict)
@@ -237,88 +164,338 @@ def load_model():
     return model
 
 
-def grad_breast(args):
-    # Can work with any model, but it assumes that the model has a
-    # feature method, and a classifier method,
-    # as in the VGG models in torchvision.
-    model = load_model()
-    summary(model, (3, 224, 224))
+def get_gadcam_image(feature_conv, weight_softmax, class_idx):
+    # generate the class activation maps upsample to 256x256
+    size_upsample = (256, 256)
+    bz, nc, h, w = feature_conv.shape
+    output_cam = []
+    for idx in class_idx:
+        cam = weight_softmax[idx].dot(feature_conv.reshape((nc, h*w)))
+        cam = cam.reshape(h, w)
+        cam = cam - np.min(cam)
+        cam_img = cam / np.max(cam)
+        cam_img = np.uint8(255 * cam_img)
+        output_cam.append(cv2.resize(cam_img, size_upsample))
+    return output_cam
+
+
+def process_image(path, net, finalconv_name):
+    net.eval()
+
+    # hook the feature extractor
+    features_blobs = []
+
+    def hook_feature(module, input, output):
+        features_blobs.append(output.data.cpu().numpy())
+
+    net._modules.get(finalconv_name).register_forward_hook(hook_feature)
+
+    # get the softmax weight
+    params = list(net.parameters())
+    weight_softmax = np.squeeze(params[-2].data.numpy())
+
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+    preprocess = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        normalize
+    ])
+
+    img_name = paths_utils.get_filename_without_extension(path)
+    img_pil = Image.open(path)
+    in_path = "temp/{}_in.jpg".format(img_name)
+    img_pil.save(in_path)
+
+    img_tensor = preprocess(img_pil)
+    img_variable = Variable(img_tensor.unsqueeze(0))
+    logit = net(img_variable)
+
+    # download the imagenet category list
+    classes = {
+        0: "Benign",
+        1: "InSitu",
+        2: "Invasive",
+        3: "Normal"
+    }
+
+    h_x = F.softmax(logit, dim=1).data.squeeze()
+    probs, idx = h_x.sort(0, True)
+    probs = probs.numpy()
+    idx = idx.numpy()
+
+    # output the prediction
+    for i in range(0, 4):
+        print('{:.3f} -> {}'.format(probs[i], classes[idx[i]]))
+
+    # generate class activation mapping for the top1 prediction
+    CAMs = get_gadcam_image(features_blobs[0], weight_softmax, [idx[0]])
+
+    # render the CAM and output
+    print('output CAM.jpg for the top1 prediction: %s' % classes[idx[0]])
+    img = cv2.imread(in_path)
+    height, width, _ = img.shape
+    heatmap = cv2.applyColorMap(cv2.resize(
+        CAMs[0], (width, height)), cv2.COLORMAP_JET)
+    result = heatmap * 0.3 + img * 0.5
+    out_path = "temp/{}_out.jpg".format(img_name)
+    cv2.imwrite(out_path, result)
+
+
+def load_dict_torch_031(model, path_ckpt):
+    import torch._utils
+    try:
+        torch._utils._rebuild_tensor_v2
+    except AttributeError:
+        def _rebuild_tensor_v2(storage, storage_offset, size, stride, requires_grad, backward_hooks):
+            tensor = torch._utils._rebuild_tensor(
+                storage, storage_offset, size, stride)
+            tensor.requires_grad = requires_grad
+            tensor._backward_hooks = backward_hooks
+            return tensor
+        torch._utils._rebuild_tensor_v2 = _rebuild_tensor_v2
+
+    model_dict = torch.load(path_ckpt)
+    model_dict_clone = model_dict.copy()  # We can't mutate while iterating
+    for key, value in model_dict_clone.items():
+        if key.endswith(('running_mean', 'running_var')):
+            del model_dict[key]
+    model.load_state_dict(model_dict, False)
+    return model
+
+
+def get_model_vqa(vqa_model="minhmul_noatt_train_2048"):
+    path = "options/breast/{}.yaml".format(vqa_model)
+    args = parser.parse_args()
+    options = {
+        'vqa': {
+            'trainsplit': args.vqa_trainsplit
+        },
+        'logs': {
+            'dir_logs': args.dir_logs
+        },
+        'model': {
+            'arch': args.arch,
+            'seq2vec': {
+                'type': args.st_type,
+                'dropout': args.st_dropout,
+                'fixed_emb': args.st_fixed_emb
+            }
+        },
+        'optim': {
+            'lr': args.learning_rate,
+            'batch_size': args.batch_size,
+            'epochs': args.epochs
+        }
+    }
+    with open(path, 'r') as handle:
+        options_yaml = yaml.load(handle)
+    options = vqa_utils.update_values(options, options_yaml)
+    if 'vgenome' not in options:
+        options['vgenome'] = None
+
+    trainset = datasets.factory_VQA(options['vqa']['trainsplit'],
+                                    options['vqa'],
+                                    options['coco'],
+                                    options['vgenome'])
+
+    model = models_vqa.factory(options['model'],
+                               trainset.vocab_words(), trainset.vocab_answers(),
+                               cuda=False, data_parallel=False)
+
+    # load checkpoint
+    path_ckpt_model = "logs/breast/{}/best_model.pth.tar".format(vqa_model)
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if os.path.isfile(path_ckpt_model):
+        # model_state = torch.load(path_ckpt_model, map_location=device)
+        # style_model.load_state_dict(torch.load(args.model))
+
+        # model_state = torch.load(path_ckpt_model)
+        # model.load_state_dict(model_state)
+
+        model = load_dict_torch_031(model, path_ckpt_model)
+
+    return model
+
+
+def get_data(vqa_model="minhmul_noatt_train_2048"):
+    path = "options/breast/{}.yaml".format(vqa_model)
+    args = parser.parse_args()
+    options = {
+        'vqa': {
+            'trainsplit': args.vqa_trainsplit
+        },
+        'logs': {
+            'dir_logs': args.dir_logs
+        },
+        'model': {
+            'arch': args.arch,
+            'seq2vec': {
+                'type': args.st_type,
+                'dropout': args.st_dropout,
+                'fixed_emb': args.st_fixed_emb
+            }
+        },
+        'optim': {
+            'lr': args.learning_rate,
+            'batch_size': args.batch_size,
+            'epochs': args.epochs
+        }
+    }
+    with open(path, 'r') as handle:
+        options_yaml = yaml.load(handle)
+    options = vqa_utils.update_values(options, options_yaml)
+    if 'vgenome' not in options:
+        options['vgenome'] = None
+
+    trainset = datasets.factory_VQA(options['vqa']['trainsplit'],
+                                    options['vqa'],
+                                    options['coco'],
+                                    options['vgenome'])
+
+    train_loader = trainset.data_loader(batch_size=1,
+                                        num_workers=0,
+                                        shuffle=True)
+
+    data = []
+
+    dataloader_iterator = iter(train_loader)
+    for i in range(5):
+        try:
+            sample = next(dataloader_iterator)
+            data.append(sample)
+        except:
+            print("something wrong")
+
+    return data, trainset
+
+
+def process_vqa(vqa_model="minhmul_noatt_train_2048", finalconv_name="linear_classif"):
+    model = get_model_vqa(vqa_model=vqa_model)
+    net = model
     print(model)
+    print(model._modules)
+    params = list(model.parameters())
 
-    grad_cam = GradCam(model=model,
-                       target_layer_names=["35"], use_cuda=args.use_cuda)
+    if "noatt" in vqa_model:
+        classif_w_params = np.squeeze(params[10].data.numpy())
+        classif_b_params = np.squeeze(params[11].data.numpy())
 
-    img = cv2.imread(args.image_path, 1)
-    img = np.float32(cv2.resize(img, (224, 224))) / 255
-    input = preprocess_image(img)
+    data, trainset = get_data(vqa_model)
 
-    # If None, returns the map for the highest scoring category.
-    # Otherwise, targets the requested index.
-    target_index = None
+    net.eval()
+    # hook the feature extractor
+    features_blobs = []
 
-    mask = grad_cam(input, target_index)
+    def hook_feature(module, input, output):
+        features_blobs.append(output.data.cpu().numpy())
 
-    show_cam_on_image(img, mask)
+    net._modules.get(finalconv_name).register_forward_hook(hook_feature)
 
-    gb_model = GuidedBackpropReLUModel(
-        model=model, use_cuda=args.use_cuda)
-    gb = gb_model(input, index=target_index)
-    utils.save_image(torch.from_numpy(gb), 'gb.jpg')
+    sample = data[0]
 
-    cam_mask = np.zeros(gb.shape)
-    for i in range(0, gb.shape[0]):
-        cam_mask[i, :, :] = mask
+    input_visual = Variable(sample['visual'])
+    input_question = Variable(sample['question'])
+    target_answer = Variable(sample['answer'])
 
-    cam_gb = np.multiply(cam_mask, gb)
-    utils.save_image(torch.from_numpy(cam_gb), 'cam_gb.jpg')
+    answer, answer_sm = process_answer(
+        net(input_visual, input_question), trainset, net)
+
+    return classif_w_params, classif_b_params
 
 
-def grad_vgg19(args):
-    # Can work with any model, but it assumes that the model has a
-    # feature method, and a classifier method,
-    # as in the VGG models in torchvision.
-    model = models.vgg19(pretrained=True)
-    summary(model, (3, 224, 224))
-    print(model)
+def process_vqa_sample(path, net, finalconv_name="linear_classif"):
+    net.eval()
 
-    grad_cam = GradCam(model=model,
-                       target_layer_names=["35"], use_cuda=args.use_cuda)
+    # hook the feature extractor
+    features_blobs = []
 
-    img = cv2.imread(args.image_path, 1)
-    img = np.float32(cv2.resize(img, (224, 224))) / 255
-    input = preprocess_image(img)
+    def hook_feature(module, input, output):
+        features_blobs.append(output.data.cpu().numpy())
 
-    # If None, returns the map for the highest scoring category.
-    # Otherwise, targets the requested index.
-    target_index = None
+    net._modules.get(finalconv_name).register_forward_hook(hook_feature)
 
-    mask = grad_cam(input, target_index)
+    # get the softmax weight
+    params = list(net.parameters())
+    weight_softmax = np.squeeze(params[-2].data.numpy())
 
-    show_cam_on_image(img, mask)
+    normalize = transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225]
+    )
+    preprocess = transforms.Compose([
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        normalize
+    ])
 
-    gb_model = GuidedBackpropReLUModel(
-        model=model, use_cuda=args.use_cuda)
-    gb = gb_model(input, index=target_index)
-    utils.save_image(torch.from_numpy(gb), 'gb.jpg')
+    img_name = paths_utils.get_filename_without_extension(path)
+    img_pil = Image.open(path)
+    in_path = "temp/{}_in.jpg".format(img_name)
+    img_pil.save(in_path)
 
-    cam_mask = np.zeros(gb.shape)
-    for i in range(0, gb.shape[0]):
-        cam_mask[i, :, :] = mask
+    img_tensor = preprocess(img_pil)
+    img_variable = Variable(img_tensor.unsqueeze(0))
+    logit = net(img_variable)
 
-    cam_gb = np.multiply(cam_mask, gb)
-    utils.save_image(torch.from_numpy(cam_gb), 'cam_gb.jpg')
+    # download the imagenet category list
+    classes = {
+        0: "Benign",
+        1: "InSitu",
+        2: "Invasive",
+        3: "Normal"
+    }
 
+    h_x = F.softmax(logit, dim=1).data.squeeze()
+    probs, idx = h_x.sort(0, True)
+    probs = probs.numpy()
+    idx = idx.numpy()
+
+    # output the prediction
+    for i in range(0, 4):
+        print('{:.3f} -> {}'.format(probs[i], classes[idx[i]]))
+
+    # generate class activation mapping for the top1 prediction
+    CAMs = get_gadcam_image(features_blobs[0], weight_softmax, [idx[0]])
+
+    # render the CAM and output
+    print('output CAM.jpg for the top1 prediction: %s' % classes[idx[0]])
+    img = cv2.imread(in_path)
+    height, width, _ = img.shape
+    heatmap = cv2.applyColorMap(cv2.resize(
+        CAMs[0], (width, height)), cv2.COLORMAP_JET)
+    result = heatmap * 0.3 + img * 0.5
+    out_path = "temp/{}_out.jpg".format(img_name)
+    cv2.imwrite(out_path, result)
+
+
+def example_process_image():
+    laptop_path = "C:/Users/minhm/Documents/GitHub/vqa_idrid/"
+    desktop_path = "/home/minhvu/github/vqa_idrid/"
+
+    is_laptop = False
+    if is_laptop:
+        path_dir = laptop_path
+        ext = "*.jpg"
+    else:
+        path_dir = desktop_path
+        ext = "*.png"
+
+    path = path_dir + "temp/test/"
+    img_dirs = glob.glob(os.path.join(path, ext))
+
+    for path in img_dirs:
+        net = load_image_model(path_dir)
+        finalconv_name = "layer4"
+        process_image(path, net, finalconv_name)
 
 
 if __name__ == '__main__':
-    """ python grad_cam.py <path_to_image>
-    1. Loads an image with opencv.
-    2. Preprocesses it for VGG19 and converts to a pytorch variable.
-    3. Makes a forward pass to find the category index with the highest score,
-    and computes intermediate activations.
-    Makes the visualization. """
+    example_process_image()
 
-    args = get_args()
-    # grad_vgg19(args)
-    grad_breast(args)
+    # process_vqa("minhmul_att_train")
+    # process_vqa("minhmul_noatt_train")
 
+    # process_vqa("minhmul_noatt_train_2048")

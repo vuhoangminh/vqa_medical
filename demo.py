@@ -233,6 +233,7 @@ def main():
                                trainset.vocab_answers(),
                                cuda=args.cuda,
                                data_parallel=False)
+    model = model.cuda()
 
     model.eval()
     start_epoch, best_acc1, _ = load_checkpoint(model, None,

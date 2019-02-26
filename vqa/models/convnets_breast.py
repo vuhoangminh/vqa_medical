@@ -20,6 +20,17 @@ model_names = pytorch_resnet_names + torch7_resnet_names + \
     ['resnet18_breast', 'resnet152_breast']
 
 
+
+def load_dict_torch_031(model, path_ckpt):
+    model_dict = torch.load(path_ckpt)
+    model_dict_clone = model_dict.copy()  # We can't mutate while iterating
+    for key, _ in model_dict_clone.items():
+        if key.endswith(('running_mean', 'running_var')):
+            del model_dict[key]
+    model.load_state_dict(model_dict, False)
+    return model
+
+
 def rename_key(state_dict):
     old_keys_list = state_dict.keys()
     for old_key in old_keys_list:
@@ -123,7 +134,10 @@ def factory(opt, cuda=True, data_parallel=True):
         checkpoint = torch.load(filename)
         state_dict = checkpoint['state_dict']
         state_dict = rename_key(state_dict)
-        model.load_state_dict(state_dict)
+        if "0.3" in torch.__version__:
+            model = load_dict_torch_031(model, filename)
+        else:
+            model.load_state_dict(state_dict)
         #  ugly hack in case of DataParallel wrapping
         model = WrapperModule(model, forward_resnet)
 
