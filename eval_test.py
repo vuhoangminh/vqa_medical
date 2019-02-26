@@ -16,7 +16,9 @@ LIST_METHOD = [
     "mlb_att_train",
     "mlb_noatt_train",
     "mutan_att_train",
-    "mutan_noatt_train"
+    "mutan_noatt_train",
+    "minhmul_noatt_train_2048",
+    "minhmul_att_train_2048",
 ]
 
 import datasets.utils.paths_utils as path_utils
@@ -40,11 +42,13 @@ def get_val_acc1_from_json(json_path, from_pt=1, to_pt=69):
 
 def process_one_method_one_dataset(method, dataset):
     json_path = "{}{}/{}/logger.json".format(LOGS_DIR, dataset, method)
-    list_acc1 = get_val_acc1_from_json(json_path, from_pt=1, to_pt=67)
-    list_last_40 = list_acc1[len(list_acc1)-39:len(list_acc1)]
-    mean = np.mean(list_last_40)
-    std = np.std(list_last_40)
-    std
+    if os.path.exists(json_path):
+        list_acc1 = get_val_acc1_from_json(json_path, from_pt=1, to_pt=67)
+        list_last_40 = list_acc1[len(list_acc1)-39:len(list_acc1)]
+        mean = np.mean(list_last_40)
+        std = np.std(list_last_40)
+    else:
+        mean, std = 0, 0
 
     return mean, std
 

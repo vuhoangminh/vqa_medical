@@ -73,6 +73,42 @@ parser.add_argument('-ho', '--help_opt', dest='help_opt', action='store_true',
                     help='show selected options before running')
 
 
+def process_visual(path_img):
+    visual_PIL = Image.open(path_img)
+    visual_tensor = transform(visual_PIL)
+    visual_data = torch.FloatTensor(1, 3,
+                                       visual_tensor.size(1),
+                                       visual_tensor.size(2))
+    visual_data[0][0] = visual_tensor[0]
+    visual_data[0][1] = visual_tensor[1]
+    visual_data[0][2] = visual_tensor[2]
+    print('visual', visual_data.size(), visual_data.mean())
+    if args.cuda:
+        visual_data = visual_data.cuda(async=True)
+    visual_input = Variable(visual_data, volatile=True)
+    visual_features = cnn(visual_input)
+    if 'NoAtt' in options['model']['arch']:
+        nb_regions = visual_features.size(2) * visual_features.size(3)
+        visual_features = visual_features.sum(3).sum(2).div(nb_regions).view(-1, 2048)
+    return visual_features
+
+
+def process_question(question_str):
+    question_tokens = tokenize_mcb(question_str)
+    question_data = torch.LongTensor(1, len(question_tokens))
+    for i, word in enumerate(question_tokens):
+        if word in trainset.word_to_wid:
+            question_data[0][i] = trainset.word_to_wid[word]
+        else:
+            question_data[0][i] = trainset.word_to_wid['UNK']
+    if args.cuda:
+        question_data = question_data.cuda(async=True)
+    question_input = Variable(question_data, volatile=True)
+    print('question', question_str, question_tokens, question_data)
+
+    return question_input
+
+
 def load_image_model(path):
     def rename_key(state_dict):
         old_keys_list = state_dict.keys()
