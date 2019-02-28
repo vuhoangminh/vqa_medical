@@ -272,14 +272,14 @@ def get_gradcam_from_image_model(path_img, cnn, finalconv_name="layer4"):
     idx = idx.cpu().numpy()
 
     # output the prediction
-    for i in range(0, 4):
-        print("{:.3f} -> {}".format(probs[i], classes[idx[i]]))
+    # for i in range(0, 4):
+    #     print("{:.3f} -> {}".format(probs[i], classes[idx[i]]))
 
     # generate class activation mapping for the top1 prediction
     CAMs = get_gadcam_image(features_blobs[0], weight_softmax, [idx[0]])
 
     # render the CAM and output
-    print('output CAM.jpg for the top1 prediction: %s' % classes[idx[0]])
+    # print('output CAM.jpg for the top1 prediction: %s' % classes[idx[0]])
     img = cv2.imread(in_path)
     height, width, _ = img.shape
     heatmap = cv2.applyColorMap(cv2.resize(
@@ -474,10 +474,16 @@ def main(dataset="breast"):
     ]
 
     LIST_QUESTION_TOOLS = [
-        "how many tools are there",
-        "is there any grasper in the image",
-        "is grasper in 0_0_32_32 location",
-        "which tool hsd pointed tip on the left of the image"
+        # "how many tools are there",
+        # "is there any grasper in the image",
+        # "is grasper in 0_0_32_32 location",
+        # "which tool has pointed tip on the left of the image",
+        "is there any bipolar in the image",
+        "is there any hook in the image",
+        "is there any scissors in the image",
+        "is there any clipper in the image",
+        "is there any irrigator in the image",
+        "is there any specimenbag in the image",
     ]
 
     if dataset == "breast":
