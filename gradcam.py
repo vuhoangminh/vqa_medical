@@ -495,15 +495,13 @@ def main(dataset="breast"):
     
     img_dirs = glob.glob(os.path.join(path, ext))
     
+    args = update_args(
+        args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
+
+    cnn, model, trainset = initialize(args, dataset=dataset)
+
     for question_str in list_question:
         for path_img in img_dirs:
-            # if dataset == "breast":
-            #     question_str = "how many classes are there?"
-
-            args = update_args(
-                args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
-
-            cnn, model, trainset = initialize(args, dataset=dataset)
             visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
                                                                                                             cnn,
                                                                                                             model,
@@ -513,20 +511,25 @@ def main(dataset="breast"):
                                                                                                             dataset=dataset)
 
             get_gradcam_from_vqa_model(visual_features,
-                                       question_features,
-                                       features_blobs_visual,
-                                       ans,
-                                       path_img,
-                                       cnn,
-                                       model,
-                                       question_str,
-                                       vqa_model="minhmul_noatt_train_2048",
-                                       finalconv_name="linear_classif")
+                                        question_features,
+                                        features_blobs_visual,
+                                        ans,
+                                        path_img,
+                                        cnn,
+                                        model,
+                                        question_str,
+                                        vqa_model="minhmul_noatt_train_2048",
+                                        finalconv_name="linear_classif")
 
-            args = update_args(
-                args, vqa_model="minhmul_att_train_2048", dataset=dataset)
 
-            cnn, model, trainset = initialize(args, dataset=dataset)
+
+    args = update_args(
+        args, vqa_model="minhmul_att_train_2048", dataset=dataset)
+        
+    cnn, model, trainset = initialize(args, dataset=dataset)
+
+    for question_str in list_question:
+        for path_img in img_dirs:
             visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
                                                                                                             cnn,
                                                                                                             model,
@@ -536,15 +539,15 @@ def main(dataset="breast"):
                                                                                                             dataset=dataset)
 
             get_gradcam_from_vqa_model(visual_features,
-                                       question_features,
-                                       features_blobs_visual,
-                                       ans,
-                                       path_img,
-                                       cnn,
-                                       model,
-                                       question_str,
-                                       vqa_model="minhmul_att_train_2048",
-                                       finalconv_name="linear_classif")
+                                        question_features,
+                                        features_blobs_visual,
+                                        ans,
+                                        path_img,
+                                        cnn,
+                                        model,
+                                        question_str,
+                                        vqa_model="minhmul_att_train_2048",
+                                        finalconv_name="linear_classif")
 
 
 if __name__ == '__main__':
