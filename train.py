@@ -22,7 +22,9 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 ##################################################
 # yaml options file contains all default choices #
-parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str, 
+# parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str, 
+#                     help='path to a yaml options file')
+parser.add_argument('--path_opt', default='options/idrid/minhmul_noatt_train_2048.yaml', type=str, 
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #

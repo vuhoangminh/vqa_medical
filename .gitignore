@@ -19,6 +19,7 @@
 !breast_qa_full.csv
 !tools_qa_full.csv
 !breast_qa_per_question.csv
+!idrid_qa_gt.csv
 !image_*.txt
 !train.txt
 !val.txt

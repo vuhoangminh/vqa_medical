@@ -102,7 +102,7 @@ def factory(opt, cuda=True, data_parallel=True):
         model = WrapperModule(model, forward_resnext) # ugly hack in case of DataParallel wrapping
 
     elif opt['arch'] == 'resnet18_idrid':
-        filename = 'vqa/external/idrid-models/resnet18_multiclassloss_retinopathy_epoch4000.pth.tar'
+        filename = 'data/image_models/best_resnet18_crossentropyloss_retinopathy_epoch500.pth.tar'
         model = pytorch_models.resnet18()
         checkpoint = torch.load(filename)
         state_dict = checkpoint['state_dict']
@@ -111,7 +111,7 @@ def factory(opt, cuda=True, data_parallel=True):
         model = WrapperModule(model, forward_resnet) # ugly hack in case of DataParallel wrapping        
 
     elif opt['arch'] == 'resnet152_idrid':
-        filename = 'vqa/external/idrid-models/resnet152_multiclassloss_retinopathy_epoch500.pth.tar'
+        filename = 'data/image_models/best_resnet152_multiclassloss_retinopathy.pth.tar'
         model = pytorch_models.resnet152()
         checkpoint = torch.load(filename)
         state_dict = checkpoint['state_dict']

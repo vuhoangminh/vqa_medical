@@ -22,14 +22,20 @@ from vqa.lib.dataloader import DataLoader
 from vqa.lib.logger import AvgMeter
 
 parser = argparse.ArgumentParser(description='Extract')
-parser.add_argument('--dataset', default='tools',
+# parser.add_argument('--dataset', default='tools',
+#                     choices=['coco', 'vgenome', 'idrid', 'tools', 'breast'],
+#                     help='dataset type: coco (default) | vgenome')
+# parser.add_argument('--dir_data', default='data/raw/m2cai16-tool-locations/preprocessed/segmentation',
+#                     help='dir dataset to download or/and load images')
+
+parser.add_argument('--dataset', default='idrid',
                     choices=['coco', 'vgenome', 'idrid', 'tools', 'breast'],
                     help='dataset type: coco (default) | vgenome')
-parser.add_argument('--dir_data', default='data/raw/m2cai16-tool-locations/preprocessed/segmentation',
+parser.add_argument('--dir_data', default='data/raw/idrid/',
                     help='dir dataset to download or/and load images')
 parser.add_argument('--data_split', default='train', type=str,
                     help='Options: (default) train | val | test')
-parser.add_argument('--arch', '-a', default='resnet152_tools',
+parser.add_argument('--arch', '-a', default='resnet152_idrid',
                     help='model architecture: ' +
                         ' | '.join(convnets_idrid.model_names) +
                         ' (default: fbresnet152)')
