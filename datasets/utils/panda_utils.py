@@ -6,6 +6,11 @@ import argparse
 from collections import Counter, OrderedDict
 
 
+def generate_image_id(index):
+    image_id = str(index).zfill(5)
+    return image_id
+
+
 def create_questions(df, dataset, dir_interim):
     filename = dir_interim + dataset + '_questions.json'
     dataset = "val"
@@ -117,7 +122,10 @@ def create_full_imageid_quesid_questype(df, dir_interim):
             sys.stdout.flush()
         file_id = row['file_id']
         dataset = row['dataset']
-        image_id = row['image_id']
+        if 'image_id' in list(df):
+            image_id = row['image_id']
+        else:
+            image_id = generate_image_id(index)
         question_i = 0
         temp_df = pd.DataFrame(columns=cols)
         for question in question_list:
@@ -160,14 +168,15 @@ def find_question_list(df):
     return cols
 
 
-def insert_dataset_to_df(df, segmentation_dict_tool):
+def insert_dataset_to_df(df, segmentation_dict_tool, is_split=True):
     list_train = segmentation_dict_tool["train"]
     list_val = segmentation_dict_tool["val"]
     temp_df = df
     temp_df['dataset'] = 'image'
     for index, row in temp_df.iterrows():
         file_id = row["file_id"]
-        file_id = file_id.split('.')[0]
+        if is_split:
+            file_id = file_id.split('.')[0]            
         if file_id in list_train:
             temp_df["dataset"][index] = "train"
         if file_id in list_val:
