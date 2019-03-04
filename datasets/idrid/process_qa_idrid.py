@@ -140,7 +140,7 @@ def vqa_processed(params):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--dirname',
-        default='data/vqa_breast',
+        default='data/vqa_idrid',
         type=str,
         help='Root directory containing raw, interim and processed directories'
     )

@@ -107,7 +107,7 @@ def process_visual(path_img, cnn, vqa_model="minhmul_noatt_train_2048"):
     return visual_features
 
 
-def process_question(question_str, trainset):
+def process_question(args, question_str, trainset):
     question_tokens = tokenize_mcb(question_str)
     question_data = torch.LongTensor(1, len(question_tokens))
     for i, word in enumerate(question_tokens):
@@ -123,12 +123,19 @@ def process_question(question_str, trainset):
     return question_input
 
 
-def process_answer(answer_var, trainset, model):
+def process_answer(answer_var, trainset, model, dataset):
     answer_sm = torch.nn.functional.softmax(Variable(answer_var.data[0].cpu()))
-    max_, aid = answer_sm.topk(5, 0, True, True)
+
+    if dataset == "idrid":
+        topk = 3
+    else:
+        topk = 5
+
+    max_, aid = answer_sm.topk(topk, 0, True, True)
+                
     ans = []
     val = []
-    for i in range(5):
+    for i in range(topk):
         ans.append(trainset.aid_to_ans[aid.data[i]])
         val.append(max_.data[i])
     answer = {'ans': ans, 'val': val}
@@ -145,8 +152,8 @@ def load_dict_torch_031(model, path_ckpt):
     return model
 
 
-def load_vqa_model(vqa_model="minhmul_noatt_train_2048"):
-    path = "options/breast/{}.yaml".format(vqa_model)
+def load_vqa_model(args, dataset, vqa_model="minhmul_noatt_train_2048"):
+    path = "options/{}/{}.yaml".format(dataset, vqa_model)
     args = parser.parse_args()
     options = {
         'vqa': {
@@ -180,7 +187,7 @@ def load_vqa_model(vqa_model="minhmul_noatt_train_2048"):
                                cuda=False, data_parallel=False)
 
     # load checkpoint
-    path_ckpt_model = "logs/breast/{}/best_model.pth.tar".format(vqa_model)
+    path_ckpt_model = "logs/{}/{}/best_model.pth.tar".format(dataset, vqa_model)
     if os.path.isfile(path_ckpt_model):
         model = load_dict_torch_031(model, path_ckpt_model)
     return model
@@ -362,7 +369,13 @@ def get_gradcam_from_vqa_model(visual_features,
     height, width, _ = img.shape
     heatmap = cv2.applyColorMap(cv2.resize(
         CAMs[0], (width, height)), cv2.COLORMAP_JET)
-    result = heatmap * 0.3 + img * 0.5
+
+
+    img_gray = cv2.imread(path_img, cv2.IMREAD_GRAYSCALE)
+    cv2.imwrite('temp.jpg', img_gray)
+    img_gray = cv2.imread('temp.jpg')
+
+    result = heatmap * 0.3 + img_gray * 0.5
 
     question_str = question_str.replace(' ', '-')
     if "noatt" in vqa_model:
@@ -410,7 +423,7 @@ def initialize(args, dataset="breast"):
     cnn = cnn.cuda()
 
     print("\n>> load vqa model...")
-    model = load_vqa_model(args.vqa_model)
+    model = load_vqa_model(args, dataset, args.vqa_model)
     model = model.cuda()
 
     return cnn, model, trainset
@@ -421,11 +434,11 @@ def process_one_example(args, cnn, model, trainset, path_img, question_str, data
     visual_features = process_visual(path_img, cnn, args.vqa_model)
 
     print("\n>> extract question features...")
-    question_features = process_question(question_str, trainset)
+    question_features = process_question(args, question_str, trainset)
 
     print("\n>> get answers...")
     answer, answer_sm = process_answer(
-        model(visual_features, question_features), trainset, model)
+        model(visual_features, question_features), trainset, model, dataset)
 
     print("\n>> get gradcam of cnn...")
     result, out_path, features_blobs_visual = get_gradcam_from_image_model(
@@ -451,7 +464,7 @@ def update_args(args, vqa_model="minhmul_noatt_train_2048", dataset="breast"):
 
 
 def main(dataset="breast"):
-    global args
+    # global args
     args = parser.parse_args()
 
     laptop_path = "C:/Users/minhm/Documents/GitHub/vqa_idrid/"
@@ -474,10 +487,10 @@ def main(dataset="breast"):
     ]
 
     LIST_QUESTION_TOOLS = [
-        # "how many tools are there",
-        # "is there any grasper in the image",
-        # "is grasper in 0_0_32_32 location",
-        # "which tool has pointed tip on the left of the image",
+        "how many tools are there",
+        "is there any grasper in the image",
+        "is grasper in 0_0_32_32 location",
+        "which tool has pointed tip on the left of the image",
         "is there any bipolar in the image",
         "is there any hook in the image",
         "is there any scissors in the image",
@@ -486,15 +499,25 @@ def main(dataset="breast"):
         "is there any specimenbag in the image",
     ]
 
+    LIST_QUESTION_IDRID = [
+        "is there haemorrhages in the fundus",
+        "is there microaneurysms in the fundus",
+        "is there soft exudates in the fundus",
+        "is there hard exudates in the fundus",
+    ]
+
     if dataset == "breast":
         path = path_dir + "temp/test_breast/"
         list_question = LIST_QUESTION_BREAST
     elif dataset == "tools":
         path = path_dir + "temp/test_tools/"
         list_question = LIST_QUESTION_TOOLS
-    
+    elif dataset == "idrid":
+        path = path_dir + "temp/test_idrid/"
+        list_question = LIST_QUESTION_IDRID
+
     img_dirs = glob.glob(os.path.join(path, ext))
-    
+
     args = update_args(
         args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
 
@@ -511,21 +534,19 @@ def main(dataset="breast"):
                                                                                                             dataset=dataset)
 
             get_gradcam_from_vqa_model(visual_features,
-                                        question_features,
-                                        features_blobs_visual,
-                                        ans,
-                                        path_img,
-                                        cnn,
-                                        model,
-                                        question_str,
-                                        vqa_model="minhmul_noatt_train_2048",
-                                        finalconv_name="linear_classif")
-
-
+                                       question_features,
+                                       features_blobs_visual,
+                                       ans,
+                                       path_img,
+                                       cnn,
+                                       model,
+                                       question_str,
+                                       vqa_model="minhmul_noatt_train_2048",
+                                       finalconv_name="linear_classif")
 
     args = update_args(
         args, vqa_model="minhmul_att_train_2048", dataset=dataset)
-        
+
     cnn, model, trainset = initialize(args, dataset=dataset)
 
     for question_str in list_question:
@@ -539,18 +560,21 @@ def main(dataset="breast"):
                                                                                                             dataset=dataset)
 
             get_gradcam_from_vqa_model(visual_features,
-                                        question_features,
-                                        features_blobs_visual,
-                                        ans,
-                                        path_img,
-                                        cnn,
-                                        model,
-                                        question_str,
-                                        vqa_model="minhmul_att_train_2048",
-                                        finalconv_name="linear_classif")
+                                       question_features,
+                                       features_blobs_visual,
+                                       ans,
+                                       path_img,
+                                       cnn,
+                                       model,
+                                       question_str,
+                                       vqa_model="minhmul_att_train_2048",
+                                       finalconv_name="linear_classif")
 
 
 if __name__ == '__main__':
     dataset = "breast"
+    main(dataset)
     dataset = "tools"
+    main(dataset)
+    dataset = "idrid"
     main(dataset)

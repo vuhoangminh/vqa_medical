@@ -131,10 +131,10 @@ class AbstractSkipThoughts(nn.Module):
  
     def _process_lengths(self, input):
         max_length = input.size(1)
-        # if "1.0" in torch.__version__:
-        #     lengths = [max_length - input.data.eq(0).sum(1).squeeze()]
-        # else:
-        lengths = list(max_length - input.data.eq(0).sum(1).squeeze())
+        if "1.0" in torch.__version__:
+            lengths = [max_length - input.data.eq(0).sum(1).squeeze()]
+        else:
+            lengths = list(max_length - input.data.eq(0).sum(1).squeeze())
         return lengths
 
     def _load_rnn(self):
