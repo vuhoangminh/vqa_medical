@@ -16,6 +16,7 @@ from torch.autograd import Variable
 from torchvision import models
 import torchvision.transforms as transforms
 from PIL import Image
+import PIL
 import requests
 import io
 import os
@@ -132,7 +133,7 @@ def process_answer(answer_var, trainset, model, dataset):
         topk = 5
 
     max_, aid = answer_sm.topk(topk, 0, True, True)
-                
+
     ans = []
     val = []
     for i in range(topk):
@@ -187,49 +188,38 @@ def load_vqa_model(args, dataset, vqa_model="minhmul_noatt_train_2048"):
                                cuda=False, data_parallel=False)
 
     # load checkpoint
-    path_ckpt_model = "logs/{}/{}/best_model.pth.tar".format(dataset, vqa_model)
+    path_ckpt_model = "logs/{}/{}/best_model.pth.tar".format(
+        dataset, vqa_model)
     if os.path.isfile(path_ckpt_model):
         model = load_dict_torch_031(model, path_ckpt_model)
     return model
 
 
-def load_image_model():
-    def rename_key(state_dict):
-        old_keys_list = state_dict.keys()
-        for old_key in old_keys_list:
-            # print(old_key)
-            new_key = old_key.replace('module.', '')
-            # print(new_key)
-            state_dict = update_ordereddict(state_dict, old_key, new_key)
-        return state_dict
-
-    def update_ordereddict(state_dict, old_key, new_key):
-        new_state_dict = OrderedDict(
-            [(new_key, v) if k == old_key else (k, v) for k, v in state_dict.items()])
-        return new_state_dict
-
-    filename = '/home/minhvu/github/vqa_idrid/data/image_models/best_resnet152_crossentropyloss_breast.pth.tar'
-    model = models.resnet152()
-    model = load_dict_torch_031(model, filename)
-    return model
+def show_cam_on_image(img, mask):
+    heatmap = cv2.applyColorMap(np.uint8(255*mask), cv2.COLORMAP_JET)
+    # heatmap = np.float32(heatmap) / 255
+    # cam = heatmap + np.float32(img)
+    result = heatmap * 0.5 + img * 0.5
+    # cam = cam / np.max(cam)
+    return result
 
 
 def get_gadcam_image(feature_conv, weight_softmax, class_idx):
     # generate the class activation maps upsample to 256x256
     size_upsample = (256, 256)
     bz, nc, h, w = feature_conv.shape
-    output_cam = []
     for idx in class_idx:
         cam = weight_softmax[idx].dot(feature_conv.reshape((nc, h*w)))
         cam = cam.reshape(h, w)
+
+        cam = np.maximum(cam, 0)
+        cam = cv2.resize(cam, size_upsample)
         cam = cam - np.min(cam)
-        cam_img = cam / np.max(cam)
-        cam_img = np.uint8(255 * cam_img)
-        output_cam.append(cv2.resize(cam_img, size_upsample))
-    return output_cam
+        cam = cam / np.max(cam)
+    return cam
 
 
-def get_gradcam_from_image_model(path_img, cnn, finalconv_name="layer4"):
+def get_gradcam_from_image_model(path_img, cnn, dataset, finalconv_name="layer4"):
 
     cnn.eval()
 
@@ -257,13 +247,20 @@ def get_gradcam_from_image_model(path_img, cnn, finalconv_name="layer4"):
 
     img_name = paths_utils.get_filename_without_extension(path_img)
     img_pil = Image.open(path_img)
-    in_path = "temp/{}_in.jpg".format(img_name)
-    img_pil.save(in_path)
 
     img_tensor = preprocess(img_pil)
     img_variable = Variable(img_tensor.unsqueeze(0))
     img_variable = img_variable.cuda(async=True)
     logit = cnn(img_variable)
+
+
+    paths_utils.make_dir("temp/gradcam/{}/".format(dataset))
+    in_path = "temp/gradcam/{}/{}_in.jpg".format(dataset, img_name)
+
+    # img_pil.thumbnail((256, 256), Image.ANTIALIAS)
+    img_pil = img_pil.resize((256, 256), resample=PIL.Image.NEAREST)
+    img_pil.save(in_path)
+
 
     # download the imagenet category list
     classes = {
@@ -278,21 +275,18 @@ def get_gradcam_from_image_model(path_img, cnn, finalconv_name="layer4"):
     probs = probs.cpu().numpy()
     idx = idx.cpu().numpy()
 
-    # output the prediction
-    # for i in range(0, 4):
-    #     print("{:.3f} -> {}".format(probs[i], classes[idx[i]]))
-
     # generate class activation mapping for the top1 prediction
-    CAMs = get_gadcam_image(features_blobs[0], weight_softmax, [idx[0]])
+    cam = get_gadcam_image(features_blobs[0], weight_softmax, [idx[0]])
 
-    # render the CAM and output
-    # print('output CAM.jpg for the top1 prediction: %s' % classes[idx[0]])
+    img_name = paths_utils.get_filename_without_extension(path_img)
+
     img = cv2.imread(in_path)
-    height, width, _ = img.shape
-    heatmap = cv2.applyColorMap(cv2.resize(
-        CAMs[0], (width, height)), cv2.COLORMAP_JET)
-    result = heatmap * 0.3 + img * 0.5
-    out_path = "temp/{}_cnn.jpg".format(img_name)
+
+    result = show_cam_on_image(img, cam)
+
+    out_path = "temp/gradcam/{}/{}_cnn.jpg".format(dataset,
+                                                   img_name)
+
     cv2.imwrite(out_path, result)
 
     return result, out_path, features_blobs
@@ -302,15 +296,15 @@ def get_gadcam_vqa(feature_conv, weight_softmax, weight_softmax_b, class_idx):
     # generate the class activation maps upsample to 256x256
     size_upsample = (256, 256)
     bz, nc, h, w = feature_conv.shape
-    output_cam = []
     for idx in class_idx:
         cam = weight_softmax[idx].dot(feature_conv.reshape((nc, h*w)))
         cam = cam.reshape(h, w)
+
+        cam = np.maximum(cam, 0)
+        cam = cv2.resize(cam, size_upsample)
         cam = cam - np.min(cam)
-        cam_img = cam / np.max(cam)
-        cam_img = np.uint8(255 * cam_img)
-        output_cam.append(cv2.resize(cam_img, size_upsample))
-    return output_cam
+        cam = cam / np.max(cam)
+    return cam
 
 
 def get_gradcam_from_vqa_model(visual_features,
@@ -321,6 +315,7 @@ def get_gradcam_from_vqa_model(visual_features,
                                cnn,
                                model,
                                question_str,
+                               dataset,
                                vqa_model="minhmul_noatt_train_2048",
                                finalconv_name="linear_classif",
                                is_show_image=False):
@@ -357,32 +352,32 @@ def get_gradcam_from_vqa_model(visual_features,
     probs = probs.cpu().numpy()
     idx = idx.cpu().numpy()
 
-    CAMs = get_gadcam_vqa(features_blobs_visual[0],
-                          classif_w_params, classif_b_params, [idx[0]])
+    cam = get_gadcam_vqa(features_blobs_visual[0],
+                         classif_w_params, classif_b_params, [idx[0]])
 
     # render the CAM and output
     # print('output CAM.jpg for the top1 prediction: %s' % ans["ans"][idx[0]])
 
     img_name = paths_utils.get_filename_without_extension(path_img)
 
-    img = cv2.imread(path_img)
-    height, width, _ = img.shape
-    heatmap = cv2.applyColorMap(cv2.resize(
-        CAMs[0], (width, height)), cv2.COLORMAP_JET)
+    in_path = "temp/gradcam/{}/{}_in.jpg".format(dataset, img_name)
 
+    img = cv2.imread(in_path)
 
-    img_gray = cv2.imread(path_img, cv2.IMREAD_GRAYSCALE)
-    cv2.imwrite('temp.jpg', img_gray)
-    img_gray = cv2.imread('temp.jpg')
-
-    result = heatmap * 0.3 + img_gray * 0.5
+    result = show_cam_on_image(img, cam)
 
     question_str = question_str.replace(' ', '-')
+
+    paths_utils.make_dir("temp/gradcam/{}/".format(dataset))
     if "noatt" in vqa_model:
-        out_path = "temp/{}_noatt_question_{}.jpg".format(
-            img_name, question_str)
+        out_path = "temp/gradcam/{}/{}_noatt_question_{}.jpg".format(dataset,
+                                                                     img_name,
+                                                                     question_str)
     else:
-        out_path = "temp/{}_att_question_{}.jpg".format(img_name, question_str)
+        out_path = "temp/gradcam/{}/{}_att_question_{}.jpg".format(dataset,
+                                                                   img_name,
+                                                                   question_str)
+
     cv2.imwrite(out_path, result)
 
     im_out = Image.open(out_path)
@@ -442,7 +437,7 @@ def process_one_example(args, cnn, model, trainset, path_img, question_str, data
 
     print("\n>> get gradcam of cnn...")
     result, out_path, features_blobs_visual = get_gradcam_from_image_model(
-        path_img, cnn.net)
+        path_img, cnn.net, dataset)
 
     print(question_str)
     print(answer)
@@ -541,6 +536,7 @@ def main(dataset="breast"):
                                        cnn,
                                        model,
                                        question_str,
+                                       dataset,
                                        vqa_model="minhmul_noatt_train_2048",
                                        finalconv_name="linear_classif")
 
@@ -567,14 +563,15 @@ def main(dataset="breast"):
                                        cnn,
                                        model,
                                        question_str,
+                                       dataset,
                                        vqa_model="minhmul_att_train_2048",
                                        finalconv_name="linear_classif")
 
 
 if __name__ == '__main__':
-    dataset = "breast"
-    main(dataset)
-    dataset = "tools"
-    main(dataset)
+    # dataset = "breast"
+    # main(dataset)
+    # dataset = "tools"
+    # main(dataset)
     dataset = "idrid"
     main(dataset)
