@@ -9,4 +9,10 @@ def print_processing(print_string):
 
 def print_separator():
     print("\n")
-    print("-"*80)        
+    print("-"*80)    
+
+def print_list(mylist):
+    i=0
+    while i < len(mylist):
+        print(mylist[i])
+        i += 1 

@@ -4,6 +4,7 @@ import vqa.lib.utils as utils
 import vqa.datasets as datasets
 import vqa.models as models_vqa
 import datasets.utils.paths_utils as paths_utils
+import datasets.utils.print_utils as print_utils
 import argparse
 import glob
 from torch.autograd import Function
@@ -253,14 +254,12 @@ def get_gradcam_from_image_model(path_img, cnn, dataset, finalconv_name="layer4"
     img_variable = img_variable.cuda(async=True)
     logit = cnn(img_variable)
 
-
     paths_utils.make_dir("temp/gradcam/{}/".format(dataset))
     in_path = "temp/gradcam/{}/{}_in.jpg".format(dataset, img_name)
 
     # img_pil.thumbnail((256, 256), Image.ANTIALIAS)
     img_pil = img_pil.resize((256, 256), resample=PIL.Image.NEAREST)
     img_pil.save(in_path)
-
 
     # download the imagenet category list
     classes = {
@@ -458,27 +457,22 @@ def update_args(args, vqa_model="minhmul_noatt_train_2048", dataset="breast"):
     return args
 
 
-def main(dataset="breast"):
+def process(path, dataset="breast"):
     # global args
     args = parser.parse_args()
 
-    laptop_path = "C:/Users/minhm/Documents/GitHub/vqa_idrid/"
-    desktop_path = "/home/minhvu/github/vqa_idrid/"
-
-    is_laptop = False
-    if is_laptop:
-        path_dir = laptop_path
-        ext = "*.jpg"
-    else:
-        path_dir = desktop_path
-        ext = "*"
-
     LIST_QUESTION_BREAST = [
-        "how many classes are there",
-        "is normal larger than benign",
-        "is normal in 0_0_32_32 location",
-        "how many pixels of normal class in the image"
-        "is benign larger than normal",
+        # "how many classes are there",
+        "how many tumor classes are there",
+        # "is there any normal class",
+        # "is there any benign class",
+        # "is there any invasive class in the image",
+        # "is there any in situ class",
+
+        # "is normal larger than benign",
+        # "is normal in 0_0_32_32 location",
+        # "how many pixels of normal class in the image"
+        # "is benign larger than normal",
     ]
 
     LIST_QUESTION_TOOLS = [
@@ -502,43 +496,13 @@ def main(dataset="breast"):
     ]
 
     if dataset == "breast":
-        path = path_dir + "temp/test_breast/"
         list_question = LIST_QUESTION_BREAST
     elif dataset == "tools":
-        path = path_dir + "temp/test_tools/"
         list_question = LIST_QUESTION_TOOLS
     elif dataset == "idrid":
-        path = path_dir + "temp/test_idrid/"
         list_question = LIST_QUESTION_IDRID
 
-    img_dirs = glob.glob(os.path.join(path, ext))
-
-    args = update_args(
-        args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
-
-    cnn, model, trainset = initialize(args, dataset=dataset)
-
-    for question_str in list_question:
-        for path_img in img_dirs:
-            visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
-                                                                                                            cnn,
-                                                                                                            model,
-                                                                                                            trainset,
-                                                                                                            path_img,
-                                                                                                            question_str,
-                                                                                                            dataset=dataset)
-
-            get_gradcam_from_vqa_model(visual_features,
-                                       question_features,
-                                       features_blobs_visual,
-                                       ans,
-                                       path_img,
-                                       cnn,
-                                       model,
-                                       question_str,
-                                       dataset,
-                                       vqa_model="minhmul_noatt_train_2048",
-                                       finalconv_name="linear_classif")
+    img_dirs = glob.glob(os.path.join(path, "*"))
 
     args = update_args(
         args, vqa_model="minhmul_att_train_2048", dataset=dataset)
@@ -547,6 +511,8 @@ def main(dataset="breast"):
 
     for question_str in list_question:
         for path_img in img_dirs:
+            print("\n\n=========================================================================")
+            print("{} - {}".format(question_str, path_img))
             visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
                                                                                                             cnn,
                                                                                                             model,
@@ -568,10 +534,64 @@ def main(dataset="breast"):
                                        finalconv_name="linear_classif")
 
 
-if __name__ == '__main__':
+def generate_images_with_black_patches(path, path_out):
+    img_dirs = glob.glob(os.path.join(path, "*"))
+    print_utils.print_list(img_dirs)
+    paths_utils.make_dir(path_out)
+
+    def patch_black(im_in, index_list):
+        I = np.asarray(im_in)
+        I.setflags(write=1)
+        x, y, dx, dy = index_list
+        I[x:x+dx, y:y+dy, :] = 0
+        im = PIL.Image.fromarray(np.uint8(I))
+        return im
+
+    for path_img in img_dirs:
+        im_in = Image.open(path_img)
+        im_name = paths_utils.get_filename_without_extension(path_img)
+        list_index_list = [
+            [2*32, 2*32, 32, 32],
+            [2*32, 5*32, 32, 32],
+            [3*32, 3*32, 64, 64],
+            [5*32, 2*32, 32, 32],
+            [5*32, 5*32, 32, 32],
+        ]
+        for index_list in list_index_list:
+            im_out = patch_black(im_in, index_list)
+            im_name_out = "{}_b-{}-{}-{}-{}.jpg".format(im_name,
+                                                    str(index_list[0]),
+                                                    str(index_list[1]),
+                                                    str(index_list[2]),
+                                                    str(index_list[0])
+                                                    )
+            im_name_out = os.path.join(path_out, im_name_out)
+            im_out.save(im_name_out)
+            # im_out.show()
+
+
+
+def get_path(dataset="breast"):
+    desktop_path = "/home/minhvu/github/vqa_idrid/"
+    path_dir = desktop_path
+    if dataset == "breast":
+        path = path_dir + "temp/test_breast/"
+    elif dataset == "tools":
+        path = path_dir + "temp/test_tools/"
+    elif dataset == "idrid":
+        path = path_dir + "temp/test_idrid/"
+    return path
+
+
+def main():
     dataset = "breast"
-    main(dataset)
-    # dataset = "tools"
-    # main(dataset)
-    # dataset = "idrid"
-    # main(dataset)
+    path = get_path(dataset)
+    generate_images_with_black_patches(
+        path, "temp/test_breast_with_black_patches/")
+
+    # process("temp/test_breast_with_black_patches/", dataset)
+    process("temp/test_breast/", dataset)
+
+
+if __name__ == '__main__':
+    main()
