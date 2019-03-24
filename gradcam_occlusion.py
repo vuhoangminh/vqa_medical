@@ -452,120 +452,6 @@ def update_args(args, vqa_model="minhmul_noatt_train_2048", dataset="breast"):
     return args
 
 
-def process(path, dataset="breast"):
-    # global args
-    args = parser.parse_args()
-
-    LIST_QUESTION_BREAST = [
-        "how many classes are there",
-        # "how many tumor classes are there",
-        # "is there any normal class",
-        # "is there any benign class",
-        # "is there any invasive class in the image",
-        # "is there any in situ class",
-
-        "is normal larger than benign",
-        # "is normal in 0_0_32_32 location",
-        # "how many pixels of normal class in the image"
-        # "is benign larger than normal",
-    ]
-
-    LIST_QUESTION_TOOLS = [
-        # "how many tools are there",
-        # "is there any grasper in the image",
-        "is grasper in 0_0_32_32 location",
-        "which tool has pointed tip on the left of the image",
-        # "is there any bipolar in the image",
-        # "is there any hook in the image",
-        # "is there any scissors in the image",
-        # "is there any clipper in the image",
-        # "is there any irrigator in the image",
-        # "is there any specimenbag in the image",
-    ]
-
-    LIST_QUESTION_IDRID = [
-        "is there haemorrhages in the fundus",
-        # "is there microaneurysms in the fundus",
-        "is there soft exudates in the fundus",
-        # "is there hard exudates in the fundus",
-    ]
-
-    if dataset == "breast":
-        list_question = LIST_QUESTION_BREAST
-    elif dataset == "tools":
-        list_question = LIST_QUESTION_TOOLS
-    elif dataset == "idrid":
-        list_question = LIST_QUESTION_IDRID
-
-    img_dirs = glob.glob(os.path.join(path, "*"))
-
-    args = update_args(
-        args, vqa_model="minhmul_att_train_2048", dataset=dataset)
-
-    cnn, model, trainset = initialize(args, dataset=dataset)
-
-    for question_str in list_question:
-        for path_img in img_dirs:
-            print(
-                "\n\n=========================================================================")
-            print("{} - {}".format(question_str, path_img))
-            visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
-                                                                                                            cnn,
-                                                                                                            model,
-                                                                                                            trainset,
-                                                                                                            path_img,
-                                                                                                            question_str,
-                                                                                                            dataset=dataset)
-
-            get_gradcam_from_vqa_model(visual_features,
-                                       question_features,
-                                       features_blobs_visual,
-                                       ans,
-                                       path_img,
-                                       cnn,
-                                       model,
-                                       question_str,
-                                       dataset,
-                                       vqa_model="minhmul_att_train_2048",
-                                       finalconv_name="linear_classif")
-
-
-def generate_images_with_black_patches(path, path_out):
-    img_dirs = glob.glob(os.path.join(path, "*"))
-    print_utils.print_list(img_dirs)
-    paths_utils.make_dir(path_out)
-
-    def patch_black(im_in, index_list):
-        I = np.asarray(im_in)
-        I.setflags(write=1)
-        x, y, dx, dy = index_list
-        I[x:x+dx, y:y+dy, :] = 0
-        im = PIL.Image.fromarray(np.uint8(I))
-        return im
-
-    for path_img in img_dirs:
-        im_in = Image.open(path_img)
-        im_name = paths_utils.get_filename_without_extension(path_img)
-        list_index_list = [
-            [2*32, 2*32, 32, 32],
-            [2*32, 5*32, 32, 32],
-            [3*32, 3*32, 64, 64],
-            [5*32, 2*32, 32, 32],
-            [5*32, 5*32, 32, 32],
-        ]
-        for index_list in list_index_list:
-            im_out = patch_black(im_in, index_list)
-            im_name_out = "{}_b-{}-{}-{}-{}.jpg".format(im_name,
-                                                        str(index_list[0]),
-                                                        str(index_list[1]),
-                                                        str(index_list[2]),
-                                                        str(index_list[0])
-                                                        )
-            im_name_out = os.path.join(path_out, im_name_out)
-            im_out.save(im_name_out)
-            # im_out.show()
-
-
 def get_path(dataset="breast"):
     desktop_path = "/home/minhvu/github/vqa_idrid/"
     path_dir = desktop_path
@@ -578,13 +464,31 @@ def get_path(dataset="breast"):
     return path
 
 
-def show_image(image, is_show=False):
-    img = image - np.min(image)
-    img = image/np.max(image)
-    result = Image.fromarray((img * 255).astype(np.uint8))
+def save_image(image, mask, occurrence,
+               out_color_path,
+               out_gray_path,
+               out_avg_path, is_show=False):
+    mask = mask - np.min(mask)
+    mask = mask/np.max(mask)
+
+    occurrence = mask/occurrence
+
+    heatmap = cv2.applyColorMap(np.uint8(255*mask), cv2.COLORMAP_JET)
+    result = heatmap * 0.5 + np.array(image) * 0.5
+
+    mask = Image.fromarray((mask * 255).astype(np.uint8))
+    result = Image.fromarray(result.astype(np.uint8))
+    occurrence = Image.fromarray((occurrence * 255).astype(np.uint8))
+
     if is_show:
+        mask.show()
+        image.show()
         result.show()
-    return result
+        occurrence.show()
+
+    result.save(out_color_path)
+    mask.save(out_gray_path)
+    occurrence.save(out_avg_path)
 
 
 def get_answer(dataset, image_path, question):
@@ -600,6 +504,8 @@ def get_answer(dataset, image_path, question):
         answer = "no"
     elif dataset == "tools" and "v05_011950" in image_path and question == "which tool has pointed tip on the left of the image":
         answer = "na"
+    elif dataset == "tools" and "v05_011950" in image_path and question == "how many tools are there":
+        answer = "1"        
     else:
         answer = None
     return answer
@@ -616,7 +522,8 @@ def process_occlusion(path, dataset="breast"):
 
     LIST_QUESTION_TOOLS = [
         "is grasper in 0_0_32_32 location",
-        "which tool has pointed tip on the left of the image",
+        # "which tool has pointed tip on the left of the image",
+        # "how many tools are there",
     ]
 
     LIST_QUESTION_IDRID = [
@@ -647,56 +554,97 @@ def process_occlusion(path, dataset="breast"):
                 continue
             else:
                 input_size = 256
-                step = 16
-                windows_size = 16
-                visual_PIL = Image.open(path_img)
-                indices = np.asarray(
-                    np.mgrid[0:input_size-windows_size:step, 0:input_size-windows_size:step].reshape(2, -1).T, dtype=np.int)
+                step = 2
+                windows_size = 32
 
-                cnn, model, trainset = initialize(args, dataset=dataset)
+                dst_dir = "temp/occlusion"
+                paths_utils.make_dir(dst_dir)
+                out_color_path = "{}/{}_{}_w_{:0}_s_{:0}_color.jpg".format(dst_dir,
+                                                                           paths_utils.get_filename_without_extension(
+                                                                               path_img),
+                                                                           question_str.replace(
+                                                                               ' ', '_'),
+                                                                           windows_size,
+                                                                           step
+                                                                           )
+                out_gray_path = "{}/{}_{}_w_{:0}_s_{:0}_gray.jpg".format(dst_dir,
+                                                                         paths_utils.get_filename_without_extension(
+                                                                             path_img),
+                                                                         question_str.replace(
+                                                                             ' ', '_'),
+                                                                         windows_size,
+                                                                         step
+                                                                         )
+                out_avg_path = "{}/{}_{}_w_{:0}_s_{:0}_avg.jpg".format(dst_dir,
+                                                                       paths_utils.get_filename_without_extension(
+                                                                           path_img),
+                                                                       question_str.replace(
+                                                                           ' ', '_'),
+                                                                       windows_size,
+                                                                       step
+                                                                       )
 
-                image_occlusion = np.zeros((input_size, input_size))
+                if not os.path.exists(out_color_path):
 
-                anw_without_black_patch = process_one_batch_of_occlusion(args,
-                                                                         cnn,
-                                                                         model,
-                                                                         trainset,
-                                                                         visual_PIL,
-                                                                         question_str,
-                                                                         box=None,
-                                                                         dataset=dataset)
-                score_without_black_patch = anw_without_black_patch.get("val")[
-                    anw_without_black_patch.get("ans").index(ans_gt)]
+                    visual_PIL = Image.open(path_img)
+                    indices = np.asarray(
+                        np.mgrid[0:input_size-windows_size+1:step, 0:input_size-windows_size+1:step].reshape(2, -1).T, dtype=np.int)
 
-                for i in range(indices.shape[0]):
-                    print_utils.print_tqdm(i,indices.shape[0])
-                    box = [indices[i][0], indices[i][0]+windows_size -
-                           1, indices[i][1], indices[i][1]+windows_size-1]
-                    # print(box)
-                    ans = process_one_batch_of_occlusion(args,
-                                                         cnn,
-                                                         model,
-                                                         trainset,
-                                                         visual_PIL,
-                                                         question_str,
-                                                         box,
-                                                         dataset=dataset)
-                    try:
-                        score = ans.get("val")[ans.get("ans").index(ans_gt)]
-                    except:
-                        score = 0
+                    cnn, model, trainset = initialize(args, dataset=dataset)
 
-                    score_occ = (score.item()-score_without_black_patch.item())/score_without_black_patch.item()
-                    image_occlusion[box[0]:box[1], box[2]:box[3]] += score_occ
+                    image_occlusion = np.zeros((input_size, input_size))
+                    image_occlusion_times = np.zeros((input_size, input_size))
 
-                image_occlusion = show_image(image_occlusion, is_show=True)
+                    anw_without_black_patch = process_one_batch_of_occlusion(args,
+                                                                             cnn,
+                                                                             model,
+                                                                             trainset,
+                                                                             visual_PIL,
+                                                                             question_str,
+                                                                             box=None,
+                                                                             dataset=dataset)
+                    score_without_black_patch = anw_without_black_patch.get("val")[
+                        anw_without_black_patch.get("ans").index(ans_gt)]
+
+                    for i in range(indices.shape[0]):
+                        print_utils.print_tqdm(i, indices.shape[0])
+                        box = [indices[i][0], indices[i][0]+windows_size -
+                               1, indices[i][1], indices[i][1]+windows_size-1]
+                        # print(box)
+                        ans = process_one_batch_of_occlusion(args,
+                                                             cnn,
+                                                             model,
+                                                             trainset,
+                                                             visual_PIL,
+                                                             question_str,
+                                                             box,
+                                                             dataset=dataset,
+                                                             is_print=False)
+                        try:
+                            score = ans.get("val")[
+                                ans.get("ans").index(ans_gt)]
+                        except:
+                            score = 0
+
+                        if score != 0:
+                            score_occ = (
+                                score_without_black_patch.item()-score.item())/score_without_black_patch.item()
+                            image_occlusion[box[0]:box[1],
+                                            box[2]:box[3]] += score_occ
+                            image_occlusion_times[box[0]:box[1],
+                                                  box[2]:box[3]] += 1
+
+                    save_image(visual_PIL, image_occlusion, image_occlusion_times,
+                               out_color_path, out_gray_path, out_avg_path,
+                               is_show=True)
 
 
 def main():
-    dataset = "breast"
+    # dataset = "breast"
+    # dataset = "tools"
+    dataset = "idrid"
     path = get_path(dataset)
-
-    process_occlusion(path, dataset="breast")
+    process_occlusion(path, dataset=dataset)
 
 
 if __name__ == '__main__':
