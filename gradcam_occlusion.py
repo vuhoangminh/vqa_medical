@@ -77,7 +77,7 @@ except AttributeError:
     torch._utils._rebuild_tensor_v2 = _rebuild_tensor_v2
 
 
-def process_visual(path_img, cnn, vqa_model="minhmul_noatt_train_2048"):
+def process_visual(visual_PIL, cnn, vqa_model="minhmul_noatt_train_2048"):
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]
@@ -88,7 +88,6 @@ def process_visual(path_img, cnn, vqa_model="minhmul_noatt_train_2048"):
         normalize
     ])
 
-    visual_PIL = Image.open(path_img)
     visual_tensor = transform(visual_PIL)
     visual_data = torch.FloatTensor(1, 3,
                                     visual_tensor.size(1),
@@ -423,31 +422,27 @@ def initialize(args, dataset="breast"):
     return cnn, model, trainset
 
 
-def process_one_example(args, cnn, model, trainset, path_img, question_str, dataset="breast", is_show_image=False):
-    print("\n>> extract visual features...")
-    visual_features = process_visual(path_img, cnn, args.vqa_model)
+def process_one_batch_of_occlusion(args, cnn, model, trainset, visual_PIL, question_str, box, dataset="breast", is_print=True):
+    img = np.array(visual_PIL)
 
-    print("\n>> extract question features...")
+    if box is not None:
+        img[box[0]:box[1], box[2]:box[3], :] = 0
+    visual_PIL = Image.fromarray(img)
+
+    if is_print:
+        print("\n>> extract visual features...")
+    visual_features = process_visual(visual_PIL, cnn, args.vqa_model)
+
+    if is_print:
+        print("\n>> extract question features...")
     question_features = process_question(args, question_str, trainset)
 
-    print("\n>> get answers...")
+    if is_print:
+        print("\n>> get answers...")
     answer, answer_sm = process_answer(
         model(visual_features, question_features), trainset, model, dataset)
 
-    print("\n>> get gradcam of cnn...")
-    result, out_path, features_blobs_visual = get_gradcam_from_image_model(
-        path_img, cnn.net, dataset)
-
-    print(question_str)
-    print(answer)
-    im_in = Image.open(path_img)
-    im_out = Image.open(out_path)
-
-    if is_show_image:
-        im_in.show()
-        im_out.show()
-
-    return visual_features, question_features, answer, answer_sm, features_blobs_visual
+    return answer
 
 
 def update_args(args, vqa_model="minhmul_noatt_train_2048", dataset="breast"):
@@ -583,6 +578,33 @@ def get_path(dataset="breast"):
     return path
 
 
+def show_image(image, is_show=False):
+    img = image - np.min(image)
+    img = image/np.max(image)
+    result = Image.fromarray((img * 255).astype(np.uint8))
+    if is_show:
+        result.show()
+    return result
+
+
+def get_answer(dataset, image_path, question):
+    if dataset == "idrid" and "IDRiD_01" in image_path and question == "is there soft exudates in the fundus":
+        answer = "no"
+    elif dataset == "idrid" and "IDRiD_05" in image_path and question == "is there soft exudates in the fundus":
+        answer = "yes"
+    elif dataset == "breast" and "A05_idx-35648-23728_ps-4096-4096" in image_path and question == "how many classes are there":
+        answer = "2"
+    elif dataset == "breast" and "A10_idx-32288-43536_ps-4096-4096" in image_path and question == "is normal larger than benign":
+        answer = "yes"
+    elif dataset == "tools" and "v05_011950" in image_path and question == "is grasper in 0_0_32_32 location":
+        answer = "no"
+    elif dataset == "tools" and "v05_011950" in image_path and question == "which tool has pointed tip on the left of the image":
+        answer = "na"
+    else:
+        answer = None
+    return answer
+
+
 def process_occlusion(path, dataset="breast"):
     # global args
     args = parser.parse_args()
@@ -614,32 +636,60 @@ def process_occlusion(path, dataset="breast"):
     args = update_args(
         args, vqa_model="minhmul_att_train_2048", dataset=dataset)
 
-    cnn, model, trainset = initialize(args, dataset=dataset)
-
     for question_str in list_question:
         for path_img in img_dirs:
             print(
                 "\n\n=========================================================================")
             print("{} - {}".format(question_str, path_img))
-            visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
-                                                                                                            cnn,
-                                                                                                            model,
-                                                                                                            trainset,
-                                                                                                            path_img,
-                                                                                                            question_str,
-                                                                                                            dataset=dataset)
+            ans_gt = get_answer(dataset, path_img, question_str)
 
-            get_gradcam_from_vqa_model(visual_features,
-                                       question_features,
-                                       features_blobs_visual,
-                                       ans,
-                                       path_img,
-                                       cnn,
-                                       model,
-                                       question_str,
-                                       dataset,
-                                       vqa_model="minhmul_att_train_2048",
-                                       finalconv_name="linear_classif")
+            if ans_gt is None:
+                continue
+            else:
+                input_size = 256
+                step = 16
+                windows_size = 16
+                visual_PIL = Image.open(path_img)
+                indices = np.asarray(
+                    np.mgrid[0:input_size-windows_size:step, 0:input_size-windows_size:step].reshape(2, -1).T, dtype=np.int)
+
+                cnn, model, trainset = initialize(args, dataset=dataset)
+
+                image_occlusion = np.zeros((input_size, input_size))
+
+                anw_without_black_patch = process_one_batch_of_occlusion(args,
+                                                                         cnn,
+                                                                         model,
+                                                                         trainset,
+                                                                         visual_PIL,
+                                                                         question_str,
+                                                                         box=None,
+                                                                         dataset=dataset)
+                score_without_black_patch = anw_without_black_patch.get("val")[
+                    anw_without_black_patch.get("ans").index(ans_gt)]
+
+                for i in range(indices.shape[0]):
+                    print_utils.print_tqdm(i,indices.shape[0])
+                    box = [indices[i][0], indices[i][0]+windows_size -
+                           1, indices[i][1], indices[i][1]+windows_size-1]
+                    # print(box)
+                    ans = process_one_batch_of_occlusion(args,
+                                                         cnn,
+                                                         model,
+                                                         trainset,
+                                                         visual_PIL,
+                                                         question_str,
+                                                         box,
+                                                         dataset=dataset)
+                    try:
+                        score = ans.get("val")[ans.get("ans").index(ans_gt)]
+                    except:
+                        score = 0
+
+                    score_occ = (score.item()-score_without_black_patch.item())/score_without_black_patch.item()
+                    image_occlusion[box[0]:box[1], box[2]:box[3]] += score_occ
+
+                image_occlusion = show_image(image_occlusion, is_show=True)
 
 
 def main():

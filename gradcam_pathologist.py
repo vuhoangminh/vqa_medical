@@ -563,7 +563,7 @@ def generate_images_with_black_patches(path, path_out):
                                                     str(index_list[0]),
                                                     str(index_list[1]),
                                                     str(index_list[2]),
-                                                    str(index_list[0])
+                                                    str(index_list[3])
                                                     )
             im_name_out = os.path.join(path_out, im_name_out)
             im_out.save(im_name_out)
