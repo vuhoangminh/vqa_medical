@@ -103,7 +103,6 @@ class AbstractAtt(nn.Module):
         x_v = x_v.transpose(1,2)
 
         list_v_att = []
-        list_v_record = []
         for i, x_att in enumerate(list_att):
             x_att = x_att.view(batch_size,
                                width * height,
@@ -112,12 +111,11 @@ class AbstractAtt(nn.Module):
                                  width * height,
                                  self.opt['dim_v'])
             x_v_att = torch.mul(x_att, x_v)
-            list_v_record.append(x_v_att)
             x_v_att = x_v_att.sum(1)
             x_v_att = x_v_att.view(batch_size, self.opt['dim_v'])
             list_v_att.append(x_v_att)
 
-        return list_v_att, list_v_record
+        return list_v_att
 
     def _fusion_glimpses(self, list_v_att, x_q_vec):
         # Process visual for each glimpses
@@ -159,10 +157,10 @@ class AbstractAtt(nn.Module):
             raise ValueError
 
         x_q_vec = self.seq2vec(input_q)
-        list_v_att, list_v_record = self._attention(input_v, x_q_vec)
+        list_v_att = self._attention(input_v, x_q_vec)
         x = self._fusion_glimpses(list_v_att, x_q_vec)
         x = self._classif(x)
-        return x, list_v_record
+        return x
 
 
 class MinhsumAtt(AbstractAtt):
