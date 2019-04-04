@@ -4,21 +4,32 @@ import vqa.lib.utils as utils
 import vqa.datasets as datasets
 import vqa.models as models_vqa
 import datasets.utils.paths_utils as paths_utils
+import datasets.utils.print_utils as print_utils
 import argparse
 import glob
+from torch.autograd import Function
 import torch
+from collections import OrderedDict
 import cv2
 import numpy as np
 from torch.nn import functional as F
 from torch.autograd import Variable
+from torchvision import models
 import torchvision.transforms as transforms
 from PIL import Image
 import PIL
+import requests
+import io
 import os
+import sys
+import json
+import vqa.models.convnets as convnets
 import vqa.models.convnets_idrid as convnets_idrid
 import vqa.models.convnets_breast as convnets_breast
 import vqa.models.convnets_tools as convnets_tools
 from vqa.datasets.vqa_processed import tokenize_mcb
+from pprint import pprint
+from train import load_checkpoint
 
 
 parser = argparse.ArgumentParser(
@@ -66,103 +77,7 @@ except AttributeError:
     torch._utils._rebuild_tensor_v2 = _rebuild_tensor_v2
 
 
-class FeatureExtractor():
-    """ Class for extracting activations and 
-    registering gradients from targetted intermediate layers """
-
-    def __init__(self, model, target_layers):
-        self.model = model
-        self.target_layers = target_layers
-        self.gradients = []
-
-    def save_gradient(self, grad):
-        self.gradients.append(grad)
-
-    def __call__(self, x):
-        outputs = []
-        self.gradients = []
-        for name, module in self.model._modules.items():
-            x = module(x)
-            if name in self.target_layers:
-                x.register_hook(self.save_gradient)
-                outputs += [x]
-        return outputs, x
-
-
-class ModelOutputs():
-    """ Class for making a forward pass, and getting:
-    1. The network output.
-    2. Activations from intermeddiate targetted layers.
-    3. Gradients from intermeddiate targetted layers. """
-
-    def __init__(self, model, target_layers):
-        self.model = model
-        self.feature_extractor = FeatureExtractor(
-            self.model.features, target_layers)
-
-    def get_gradients(self):
-        return self.feature_extractor.gradients
-
-    def __call__(self, x):
-        target_activations, output = self.feature_extractor(x)
-        output = output.view(output.size(0), -1)
-        output = self.model.classifier(output)
-        return target_activations, output
-
-
-class GradCam:
-    def __init__(self, model, target_layer_names, use_cuda):
-        self.model = model
-        self.model.eval()
-        self.cuda = use_cuda
-        if self.cuda:
-            self.model = model.cuda()
-
-        self.extractor = ModelOutputs(self.model, target_layer_names)
-
-    def forward(self, input):
-        return self.model(input)
-
-    def __call__(self, input, index=None):
-        if self.cuda:
-            features, output = self.extractor(input.cuda())
-        else:
-            features, output = self.extractor(input)
-
-        if index == None:
-            index = np.argmax(output.cpu().data.numpy())
-
-        one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
-        one_hot[0][index] = 1
-        one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
-        if self.cuda:
-            one_hot = torch.sum(one_hot.cuda() * output)
-        else:
-            one_hot = torch.sum(one_hot * output)
-
-        self.model.features.zero_grad()
-        self.model.classifier.zero_grad()
-        one_hot.backward(retain_graph=True)
-
-        grads_val = self.extractor.get_gradients()[-1].cpu().data.numpy()
-
-        target = features[-1]
-        target = target.cpu().data.numpy()[0, :]
-
-        weights = np.mean(grads_val, axis=(2, 3))[0, :]
-        cam = np.zeros(target.shape[1:], dtype=np.float32)
-
-        for i, w in enumerate(weights):
-            cam += w * target[i, :, :]
-
-        cam = np.maximum(cam, 0)
-        cam = cv2.resize(cam, (224, 224))
-        cam = cam - np.min(cam)
-        cam = cam / np.max(cam)
-        return cam
-
-
-def process_visual(path_img, cnn, vqa_model="minhmul_noatt_train_2048"):
+def process_visual(visual_PIL, cnn, vqa_model="minhmul_noatt_train_2048"):
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]
@@ -173,7 +88,6 @@ def process_visual(path_img, cnn, vqa_model="minhmul_noatt_train_2048"):
         normalize
     ])
 
-    visual_PIL = Image.open(path_img)
     visual_tensor = transform(visual_PIL)
     visual_data = torch.FloatTensor(1, 3,
                                     visual_tensor.size(1),
@@ -433,18 +347,9 @@ def get_gradcam_from_vqa_model(visual_features,
 
     h_x = F.softmax(logit, dim=1).data.squeeze()
     probs, idx = h_x.sort(0, True)
-    output = h_x
     probs = probs.cpu().numpy()
     idx = idx.cpu().numpy()
 
-    one_hot = np.zeros((1, probs.size), dtype=np.float32)
-    one_hot[0][idx[0]] = 1
-    one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
-    one_hot = torch.sum(one_hot.cuda() * output)
-
-    model.conv_v_att.zero_grad()
-    model.linear_classif.zero_grad()
-    one_hot.backward(retain_graph=True)
     cam = get_gadcam_vqa(features_blobs_visual[0],
                          classif_w_params, classif_b_params, [idx[0]])
 
@@ -517,31 +422,27 @@ def initialize(args, dataset="breast"):
     return cnn, model, trainset
 
 
-def process_one_example(args, cnn, model, trainset, path_img, question_str, dataset="breast", is_show_image=False):
-    print("\n>> extract visual features...")
-    visual_features = process_visual(path_img, cnn, args.vqa_model)
+def process_one_batch_of_occlusion(args, cnn, model, trainset, visual_PIL, question_str, box, dataset="breast", is_print=True):
+    img = np.array(visual_PIL)
 
-    print("\n>> extract question features...")
+    if box is not None:
+        img[box[0]:box[1], box[2]:box[3], :] = 0
+    visual_PIL = Image.fromarray(img)
+
+    if is_print:
+        print("\n>> extract visual features...")
+    visual_features = process_visual(visual_PIL, cnn, args.vqa_model)
+
+    if is_print:
+        print("\n>> extract question features...")
     question_features = process_question(args, question_str, trainset)
 
-    print("\n>> get answers...")
+    if is_print:
+        print("\n>> get answers...")
     answer, answer_sm = process_answer(
         model(visual_features, question_features), trainset, model, dataset)
 
-    print("\n>> get gradcam of cnn...")
-    result, out_path, features_blobs_visual = get_gradcam_from_image_model(
-        path_img, cnn.net, dataset)
-
-    print(question_str)
-    print(answer)
-    im_in = Image.open(path_img)
-    im_out = Image.open(out_path)
-
-    if is_show_image:
-        im_in.show()
-        im_out.show()
-
-    return visual_features, question_features, answer, answer_sm, features_blobs_visual
+    return answer
 
 
 def update_args(args, vqa_model="minhmul_noatt_train_2048", dataset="breast"):
@@ -551,125 +452,201 @@ def update_args(args, vqa_model="minhmul_noatt_train_2048", dataset="breast"):
     return args
 
 
-def main(dataset="breast"):
+def get_path(dataset="breast"):
+    desktop_path = "/home/minhvu/github/vqa_idrid/"
+    path_dir = desktop_path
+    if dataset == "breast":
+        path = path_dir + "temp/test_breast/"
+    elif dataset == "tools":
+        path = path_dir + "temp/test_tools/"
+    elif dataset == "idrid":
+        path = path_dir + "temp/test_idrid/"
+    return path
+
+
+def save_image(image, mask, occurrence,
+               out_color_path,
+               out_gray_path,
+               out_avg_path, is_show=False):
+    mask = mask - np.min(mask)
+    mask = mask/np.max(mask)
+
+    occurrence = mask/occurrence
+
+    heatmap = cv2.applyColorMap(np.uint8(255*mask), cv2.COLORMAP_JET)
+    result = heatmap * 0.5 + np.array(image) * 0.5
+
+    mask = Image.fromarray((mask * 255).astype(np.uint8))
+    result = Image.fromarray(result.astype(np.uint8))
+    occurrence = Image.fromarray((occurrence * 255).astype(np.uint8))
+
+    if is_show:
+        mask.show()
+        image.show()
+        result.show()
+        occurrence.show()
+
+    result.save(out_color_path)
+    mask.save(out_gray_path)
+    occurrence.save(out_avg_path)
+
+
+def get_answer(dataset, image_path, question):
+    if dataset == "idrid" and "IDRiD_01" in image_path and question == "is there soft exudates in the fundus":
+        answer = "no"
+    elif dataset == "idrid" and "IDRiD_05" in image_path and question == "is there soft exudates in the fundus":
+        answer = "yes"
+    elif dataset == "breast" and "A05_idx-35648-23728_ps-4096-4096" in image_path and question == "how many classes are there":
+        answer = "2"
+    elif dataset == "breast" and "A10_idx-32288-43536_ps-4096-4096" in image_path and question == "is normal larger than benign":
+        answer = "yes"
+    elif dataset == "tools" and "v05_011950" in image_path and question == "is grasper in 0_0_32_32 location":
+        answer = "no"
+    elif dataset == "tools" and "v05_011950" in image_path and question == "which tool has pointed tip on the left of the image":
+        answer = "na"
+    elif dataset == "tools" and "v05_011950" in image_path and question == "how many tools are there":
+        answer = "1"        
+    else:
+        answer = None
+    return answer
+
+
+def process_occlusion(path, dataset="breast"):
     # global args
     args = parser.parse_args()
 
-    laptop_path = "C:/Users/minhm/Documents/GitHub/vqa_idrid/"
-    desktop_path = "/home/minhvu/github/vqa_idrid/"
-
-    is_laptop = False
-    if is_laptop:
-        path_dir = laptop_path
-        ext = "*.jpg"
-    else:
-        path_dir = desktop_path
-        ext = "*"
-
     LIST_QUESTION_BREAST = [
         "how many classes are there",
-        "is there any benign in the image",
-        "is there any in situ carcinoma in the image",
-        "is there any invasive carcinoma in the image",
-        "what is the major class",
-        "what is the minor class",
-        "is there benign in the region 64_64_16_16?",
-        "is there invasive carcinoma in the region 80_80_16_16?",
+        "is normal larger than benign",
     ]
 
     LIST_QUESTION_TOOLS = [
-        "how many tools are there",
-        "is there any grasper in the image",
-        "is there any bipolar in the image",
-        "is there any hook in the image",
-        "is there any scissors in the image",
-        "is there any clipper in the image",
-        "is there any irrigator in the image",
-        "is there any specimenbag in the image",
+        "is grasper in 0_0_32_32 location",
+        # "which tool has pointed tip on the left of the image",
+        # "how many tools are there",
     ]
 
     LIST_QUESTION_IDRID = [
         "is there haemorrhages in the fundus",
-        "is there microaneurysms in the fundus",
         "is there soft exudates in the fundus",
-        "is there hard exudates in the fundus",
-        "is hard exudates larger than soft exudates",
-        "is haemorrhages smaller than microaneurysms",
-        "is there haemorrhages in the region 64_64_16_16?",
-        "is there microaneurysms in the region 80_80_16_16?",
     ]
 
     if dataset == "breast":
-        path = path_dir + "temp/test_breast/"
         list_question = LIST_QUESTION_BREAST
     elif dataset == "tools":
-        path = path_dir + "temp/test_tools/"
         list_question = LIST_QUESTION_TOOLS
     elif dataset == "idrid":
-        path = path_dir + "temp/test_idrid/"
         list_question = LIST_QUESTION_IDRID
 
-    img_dirs = glob.glob(os.path.join(path, ext))
-
-    # args = update_args(
-    #     args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
-
-    # cnn, model, trainset = initialize(args, dataset=dataset)
-
-    # for question_str in list_question:
-    #     for path_img in img_dirs:
-    #         visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
-    #                                                                                                         cnn,
-    #                                                                                                         model,
-    #                                                                                                         trainset,
-    #                                                                                                         path_img,
-    #                                                                                                         question_str,
-    #                                                                                                         dataset=dataset)
-
-    #         get_gradcam_from_vqa_model(visual_features,
-    #                                    question_features,
-    #                                    features_blobs_visual,
-    #                                    ans,
-    #                                    path_img,
-    #                                    cnn,
-    #                                    model,
-    #                                    question_str,
-    #                                    dataset,
-    #                                    vqa_model="minhmul_noatt_train_2048",
-    #                                    finalconv_name="linear_classif")
+    img_dirs = glob.glob(os.path.join(path, "*"))
 
     args = update_args(
         args, vqa_model="minhmul_att_train_2048", dataset=dataset)
 
-    cnn, model, trainset = initialize(args, dataset=dataset)
-
     for question_str in list_question:
         for path_img in img_dirs:
-            visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
-                                                                                                            cnn,
-                                                                                                            model,
-                                                                                                            trainset,
-                                                                                                            path_img,
-                                                                                                            question_str,
-                                                                                                            dataset=dataset)
+            print(
+                "\n\n=========================================================================")
+            print("{} - {}".format(question_str, path_img))
+            ans_gt = get_answer(dataset, path_img, question_str)
 
-            get_gradcam_from_vqa_model(visual_features,
-                                       question_features,
-                                       features_blobs_visual,
-                                       ans,
-                                       path_img,
-                                       cnn,
-                                       model,
-                                       question_str,
-                                       dataset,
-                                       vqa_model="minhmul_att_train_2048",
-                                       finalconv_name="linear_classif")
+            if ans_gt is None:
+                continue
+            else:
+                input_size = 256
+                step = 2
+                windows_size = 32
+
+                dst_dir = "temp/occlusion"
+                paths_utils.make_dir(dst_dir)
+                out_color_path = "{}/{}_{}_w_{:0}_s_{:0}_color.jpg".format(dst_dir,
+                                                                           paths_utils.get_filename_without_extension(
+                                                                               path_img),
+                                                                           question_str.replace(
+                                                                               ' ', '_'),
+                                                                           windows_size,
+                                                                           step
+                                                                           )
+                out_gray_path = "{}/{}_{}_w_{:0}_s_{:0}_gray.jpg".format(dst_dir,
+                                                                         paths_utils.get_filename_without_extension(
+                                                                             path_img),
+                                                                         question_str.replace(
+                                                                             ' ', '_'),
+                                                                         windows_size,
+                                                                         step
+                                                                         )
+                out_avg_path = "{}/{}_{}_w_{:0}_s_{:0}_avg.jpg".format(dst_dir,
+                                                                       paths_utils.get_filename_without_extension(
+                                                                           path_img),
+                                                                       question_str.replace(
+                                                                           ' ', '_'),
+                                                                       windows_size,
+                                                                       step
+                                                                       )
+
+                if not os.path.exists(out_color_path):
+
+                    visual_PIL = Image.open(path_img)
+                    visual_PIL = visual_PIL.resize((input_size,input_size), Image.ANTIALIAS)
+                    indices = np.asarray(
+                        np.mgrid[0:input_size-windows_size+1:step, 0:input_size-windows_size+1:step].reshape(2, -1).T, dtype=np.int)
+
+                    cnn, model, trainset = initialize(args, dataset=dataset)
+
+                    image_occlusion = np.zeros((input_size, input_size))
+                    image_occlusion_times = np.zeros((input_size, input_size))
+
+                    anw_without_black_patch = process_one_batch_of_occlusion(args,
+                                                                             cnn,
+                                                                             model,
+                                                                             trainset,
+                                                                             visual_PIL,
+                                                                             question_str,
+                                                                             box=None,
+                                                                             dataset=dataset)
+                    score_without_black_patch = anw_without_black_patch.get("val")[
+                        anw_without_black_patch.get("ans").index(ans_gt)]
+
+                    for i in range(indices.shape[0]):
+                        print_utils.print_tqdm(i, indices.shape[0])
+                        box = [indices[i][0], indices[i][0]+windows_size -
+                               1, indices[i][1], indices[i][1]+windows_size-1]
+                        # print(box)
+                        ans = process_one_batch_of_occlusion(args,
+                                                             cnn,
+                                                             model,
+                                                             trainset,
+                                                             visual_PIL,
+                                                             question_str,
+                                                             box,
+                                                             dataset=dataset,
+                                                             is_print=False)
+                        try:
+                            score = ans.get("val")[
+                                ans.get("ans").index(ans_gt)]
+                        except:
+                            score = 0
+
+                        if score != 0:
+                            score_occ = (
+                                score_without_black_patch.item()-score.item())/score_without_black_patch.item()
+                            image_occlusion[box[0]:box[1],
+                                            box[2]:box[3]] += score_occ
+                            image_occlusion_times[box[0]:box[1],
+                                                  box[2]:box[3]] += 1
+
+                    save_image(visual_PIL, image_occlusion, image_occlusion_times,
+                               out_color_path, out_gray_path, out_avg_path,
+                               is_show=True)
+
+
+def main():
+    # dataset = "breast"
+    # dataset = "tools"
+    dataset = "idrid"
+    path = get_path(dataset)
+    process_occlusion(path, dataset=dataset)
 
 
 if __name__ == '__main__':
-    # dataset = "breast"
-    # main(dataset)
-    dataset = "tools"
-    main(dataset)
-    # dataset = "idrid"
-    # main(dataset)
+    main()

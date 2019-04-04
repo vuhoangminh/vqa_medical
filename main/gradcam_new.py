@@ -78,14 +78,35 @@ class FeatureExtractor():
     def save_gradient(self, grad):
         self.gradients.append(grad)
 
-    def __call__(self, x):
+    def _fusion_att(self, x_v, x_q):
+        x_att = torch.pow(x_q, 2)
+        x_att = torch.mul(x_v, x_att)
+        return x_att
+
+    def _fusion_classif(self, x_v, x_q):
+        x_mm = torch.pow(x_q, 2)
+        x_mm = torch.mul(x_v, x_mm)
+        return x_mm
+
+    def __call__(self, x, y):
         outputs = []
         self.gradients = []
         for name, module in self.model._modules.items():
-            x = module(x)
+            if name == "seq2vec":
+                x_q_vec = module(y)
+            if name == "conv_v_att":
+                x_v = module(x)
+            if name == "linear_q_att":
+                x_q = module(x_q_vec)
+                x_q = x_q.view(1,
+                               1,
+                               2048)
+                x_q = x_q.expand(1,
+                                 7 * 7,
+                                 2048)
             if name in self.target_layers:
-                x.register_hook(self.save_gradient)
-                outputs += [x]
+                x_v.register_hook(self.save_gradient)
+                outputs += [x_v]
         return outputs, x
 
 
@@ -98,13 +119,13 @@ class ModelOutputs():
     def __init__(self, model, target_layers):
         self.model = model
         self.feature_extractor = FeatureExtractor(
-            self.model.features, target_layers)
+            self.model, target_layers)
 
     def get_gradients(self):
         return self.feature_extractor.gradients
 
-    def __call__(self, x):
-        target_activations, output = self.feature_extractor(x)
+    def __call__(self, x, y):
+        target_activations, output = self.feature_extractor(x, y)
         output = output.view(output.size(0), -1)
         output = self.model.classifier(output)
         return target_activations, output
@@ -120,29 +141,47 @@ class GradCam:
 
         self.extractor = ModelOutputs(self.model, target_layer_names)
 
-    def forward(self, input):
-        return self.model(input)
+    def forward(self, visual_features, question_features):
+        return self.model(visual_features, question_features)
 
-    def __call__(self, input, index=None):
+    def __call__(self, visual_features, question_features, index=None):
         if self.cuda:
-            features, output = self.extractor(input.cuda())
+            features, output = self.extractor(
+                visual_features.cuda(), question_features.cuda())
         else:
-            features, output = self.extractor(input)
+            features, output = self.extractor(
+                visual_features, question_features)
 
         if index == None:
             index = np.argmax(output.cpu().data.numpy())
 
-        one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
-        one_hot[0][index] = 1
-        one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
-        if self.cuda:
-            one_hot = torch.sum(one_hot.cuda() * output)
-        else:
-            one_hot = torch.sum(one_hot * output)
+        logit = self.model(visual_features, question_features)
 
-        self.model.features.zero_grad()
-        self.model.classifier.zero_grad()
+        h_x = F.softmax(logit, dim=1).data.squeeze()
+        probs, idx = h_x.sort(0, True)
+        output = h_x
+        probs = probs.cpu().numpy()
+        idx = idx.cpu().numpy()
+
+        one_hot = np.zeros((1, probs.size), dtype=np.float32)
+        one_hot[0][idx[0]] = 1
+        one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
+        one_hot = torch.sum(one_hot.cuda() * output)
+        self.model.conv_v_att.zero_grad()
+        self.model.linear_classif.zero_grad()
         one_hot.backward(retain_graph=True)
+
+        # one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
+        # one_hot[0][index] = 1
+        # one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
+        # if self.cuda:
+        #     one_hot = torch.sum(one_hot.cuda() * output)
+        # else:
+        #     one_hot = torch.sum(one_hot * output)
+
+        # self.model.features.zero_grad()
+        # self.model.classifier.zero_grad()
+        # one_hot.backward(retain_graph=True)
 
         grads_val = self.extractor.get_gradients()[-1].cpu().data.numpy()
 
@@ -404,7 +443,10 @@ def get_gradcam_from_vqa_model(visual_features,
                                finalconv_name="linear_classif",
                                is_show_image=False):
 
-    model.eval()
+    # grad_cam = GradCam(model=model,
+    #                    target_layer_names=["conv_v_att"], use_cuda=True)
+
+    # mask = grad_cam(visual_features, question_features)
 
     # hook the feature extractor
     features_blobs = []
@@ -441,10 +483,15 @@ def get_gradcam_from_vqa_model(visual_features,
     one_hot[0][idx[0]] = 1
     one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
     one_hot = torch.sum(one_hot.cuda() * output)
+    
+    # model.conv_v_att.zero_grad()
+    # model.linear_classif.zero_grad()
 
-    model.conv_v_att.zero_grad()
-    model.linear_classif.zero_grad()
+    model.conv_att.register_backward_hook(print)    
+    model.conv_v_att.register_backward_hook(print)
     one_hot.backward(retain_graph=True)
+
+
     cam = get_gadcam_vqa(features_blobs_visual[0],
                          classif_w_params, classif_b_params, [idx[0]])
 

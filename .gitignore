@@ -26,6 +26,7 @@
 *.npz
 *.pkl
 logs/*
+*.gz
 
 
 

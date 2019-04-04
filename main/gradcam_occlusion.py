@@ -7,29 +7,19 @@ import datasets.utils.paths_utils as paths_utils
 import datasets.utils.print_utils as print_utils
 import argparse
 import glob
-from torch.autograd import Function
 import torch
-from collections import OrderedDict
 import cv2
 import numpy as np
 from torch.nn import functional as F
 from torch.autograd import Variable
-from torchvision import models
 import torchvision.transforms as transforms
 from PIL import Image
 import PIL
-import requests
-import io
 import os
-import sys
-import json
-import vqa.models.convnets as convnets
 import vqa.models.convnets_idrid as convnets_idrid
 import vqa.models.convnets_breast as convnets_breast
 import vqa.models.convnets_tools as convnets_tools
 from vqa.datasets.vqa_processed import tokenize_mcb
-from pprint import pprint
-from train import load_checkpoint
 
 
 parser = argparse.ArgumentParser(
@@ -517,18 +507,35 @@ def process_occlusion(path, dataset="breast"):
 
     LIST_QUESTION_BREAST = [
         "how many classes are there",
-        "is normal larger than benign",
+        "is there any benign in the image",
+        "is there any in situ carcinoma in the image",
+        "is there any invasive carcinoma in the image",
+        "what is the major class",
+        "what is the minor class",
+        "is there benign in the region 64_64_16_16?",
+        "is there invasive carcinoma in the region 80_80_16_16?",
     ]
 
     LIST_QUESTION_TOOLS = [
-        "is grasper in 0_0_32_32 location",
-        # "which tool has pointed tip on the left of the image",
-        # "how many tools are there",
+        "how many tools are there",
+        "is there any grasper in the image",
+        "is there any bipolar in the image",
+        "is there any hook in the image",
+        "is there any scissors in the image",
+        "is there any clipper in the image",
+        "is there any irrigator in the image",
+        "is there any specimenbag in the image",
     ]
 
     LIST_QUESTION_IDRID = [
         "is there haemorrhages in the fundus",
+        "is there microaneurysms in the fundus",
         "is there soft exudates in the fundus",
+        "is there hard exudates in the fundus",
+        "is hard exudates larger than soft exudates",
+        "is haemorrhages smaller than microaneurysms",
+        "is there haemorrhages in the region 64_64_16_16?",
+        "is there microaneurysms in the region 80_80_16_16?",
     ]
 
     if dataset == "breast":
