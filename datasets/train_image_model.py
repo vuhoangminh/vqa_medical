@@ -16,19 +16,21 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 from sklearn.metrics import cohen_kappa_score
+import datasets.utils.augment_utils as augment_utils
+
 
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__")
                      and callable(models.__dict__[name]))
 
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('-data', metavar='DIR', default='data/raw/breast-cancer/preprocessed/Photos/', type=str,
+parser.add_argument('-data', metavar='DIR', default='data/raw/vqa_med/preprocessed/classification/', type=str,
                     help='path to dataset')
-parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet18',
+parser.add_argument('--arch', '-a', metavar='ARCH', default='resnet152',
                     choices=model_names,
                     help='model architecture: ' +
                     ' | '.join(model_names) +
-                    ' (default: resnet18)')
+                    ' (default: resnet152)')
 parser.add_argument('-j', '--workers', default=2, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=5000, type=int, metavar='N',
