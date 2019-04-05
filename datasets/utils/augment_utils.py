@@ -16,6 +16,57 @@ RGB_MEAN = [0.5, 0.5, 0.5]
 RGB_STD = [0.5, 0.5, 0.5]
 
 
+def separate_resnet_bn_paras(modules):
+    if not isinstance(modules, list):
+        modules = [*modules.modules()]
+    paras_only_bn = []
+    paras_wo_bn = []
+    paras_wo_bn_to_finetune = []
+    for index, layer in enumerate(modules):
+        if 'model' in str(layer.__class__):
+            continue
+        if 'container' in str(layer.__class__):
+            continue
+        else:
+            if 'batchnorm' in str(layer.__class__):
+                paras_only_bn.extend([*layer.parameters()])
+            else:
+                paras_wo_bn.extend([*layer.parameters()])
+        if index > 418:
+            if 'batchnorm' in str(layer.__class__):
+                continue
+            else:
+                paras_wo_bn_to_finetune.extend([*layer.parameters()])
+
+
+    return paras_only_bn, paras_wo_bn, paras_wo_bn_to_finetune
+
+
+def make_weights_for_balanced_classes(images, nclasses):
+    '''
+        Make a vector of weights for each image in the dataset, based
+        on class frequency. The returned vector of weights can be used
+        to create a WeightedRandomSampler for a DataLoader to have
+        class balancing when sampling for a training batch.
+            images - torchvisionDataset.imgs
+            nclasses - len(torchvisionDataset.classes)
+        https://discuss.pytorch.org/t/balanced-sampling-between-classes-with-torchvision-dataloader/2703/3
+    '''
+    count = [0] * nclasses
+    for item in images:
+        count[item[1]] += 1  # item is (img-data, label-id)
+    weight_per_class = [0.] * nclasses
+    N = float(sum(count))  # total number of images
+    for i in range(nclasses):
+        weight_per_class[i] = N / float(count[i])
+    weight = [0] * len(images)
+    for idx, val in enumerate(images):
+        weight[idx] = weight_per_class[val[1]]
+
+    return weight, weight_per_class
+
+
+
 def rgb2gray(rgb):
     return np.dot(rgb[..., :3], [0.2989, 0.5870, 0.1140])
 
@@ -745,6 +796,29 @@ class PowerPIL(RandomOrder):
                 self.transforms.append(Gaussian(1))
             elif index == 1:
                 self.transforms.append(SpeckleNoise(1))
+        if random.random() < erase:
+            self.transforms.append(RandomErase(1))
+        if random.random() < shift:
+            self.transforms.append(RandomShift(1))
+        if random.random() < scale:
+            self.transforms.append(RandomScale(1))
+
+
+class PowerPILMed(RandomOrder):
+    def __init__(self,
+                 contrast=0.3,
+                 brightness=0.3,
+                 sharpness=0.4,
+                 erase=0.1,
+                 shift=0.2,
+                 scale=0.4):
+        self.transforms = []
+        if brightness != 0:
+            self.transforms.append(PILBrightness(brightness))
+        if contrast != 0:
+            self.transforms.append(PILContrast(contrast))
+        if sharpness != 0:
+            self.transforms.append(PILSharpness(sharpness))
         if random.random() < erase:
             self.transforms.append(RandomErase(1))
         if random.random() < shift:

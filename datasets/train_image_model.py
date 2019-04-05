@@ -39,7 +39,7 @@ parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
 parser.add_argument('-b', '--batch-size', default=4, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--lr', '--learning-rate', default=0.001, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.01, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum')
@@ -67,6 +67,52 @@ def main():
     global args, best_prec1
     args = parser.parse_args()
 
+
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
+
+    train_transform = transforms.Compose([
+        transforms.RandomResizedCrop(224),
+        augment_utils.PowerPILMed(),
+        transforms.RandomRotation((-30, 30)),
+        transforms.RandomHorizontalFlip(p=0.4),
+        transforms.RandomVerticalFlip(p=0.4),
+        transforms.ToTensor(),
+        normalize,
+    ])
+
+    val_transform = transforms.Compose([
+        transforms.Resize(224),
+        transforms.ToTensor(),
+        normalize,
+    ])
+
+    dataset_train = datasets.ImageFolder(args.data, train_transform)
+    dataset_val = datasets.ImageFolder(args.data, val_transform)
+
+    # create a weighted random sampler to process imbalanced data
+    weights, weight_per_class = augment_utils.make_weights_for_balanced_classes(
+        dataset_train.imgs, len(dataset_train.classes))
+    weights = torch.DoubleTensor(weights)
+    sampler = torch.utils.data.sampler.WeightedRandomSampler(
+        weights, len(weights))
+
+    train_loader = torch.utils.data.DataLoader(
+        dataset_train, batch_size=32,
+        sampler=sampler,
+        pin_memory=True,
+        num_workers=0, drop_last=True
+    )
+
+    val_loader = torch.utils.data.DataLoader(
+        dataset_val,
+        batch_size=16,
+        num_workers=0
+    )
+
+
+
+
     args.distributed = args.world_size > 1
 
     if args.distributed:
@@ -81,6 +127,8 @@ def main():
         print("=> creating model '{}'".format(args.arch))
         model = models.__dict__[args.arch]()
 
+    # model.fc = nn.Linear(512, len(dataset_train.classes))
+
     if not args.distributed:
         if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
             model.features = torch.nn.DataParallel(model.features)
@@ -91,14 +139,15 @@ def main():
         model.cuda()
         model = torch.nn.parallel.DistributedDataParallel(model)
 
-    # define loss function (criterion) and optimizer
+
     criterion = nn.CrossEntropyLoss().cuda()
+    if args.evaluate:
+        validate(val_loader, model, criterion)
+        return
+        
+    _ , _, paras_wo_bn_to_finetune = augment_utils.separate_resnet_bn_paras(model)
 
-    # optimizer = torch.optim.SGD(model.parameters(), args.lr,
-    #                             momentum=args.momentum,
-    #                             weight_decay=args.weight_decay)
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    optimizer = torch.optim.Adam(paras_wo_bn_to_finetune, lr=0.0001)
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -117,47 +166,23 @@ def main():
     cudnn.benchmark = True
 
     # Data loading code
-    traindir = os.path.join(args.data, 'train')
-    valdir = os.path.join(args.data, 'val')
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
+    # traindir = os.path.join(args.data, 'train')
+    # valdir = os.path.join(args.data, 'val')
 
-    train_dataset = datasets.ImageFolder(
-        traindir,
-        transforms.Compose([
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ]))
+    # define loss function (criterion) and optimizer
+    
 
-    if args.distributed:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-    else:
-        train_sampler = None
+    # optimizer = torch.optim.SGD(model.parameters(), args.lr,
+    #                             momentum=args.momentum,
+    #                             weight_decay=args.weight_decay)
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+    
 
-    val_loader = torch.utils.data.DataLoader(
-        datasets.ImageFolder(valdir, transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            normalize,
-        ])),
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
-
-    if args.evaluate:
-        validate(val_loader, model, criterion)
-        return
 
     for epoch in range(args.start_epoch, args.epochs):
-        if args.distributed:
-            train_sampler.set_epoch(epoch)
-        # adjust_learning_rate(optimizer, epoch)
+        # if args.distributed:
+        #     train_sampler.set_epoch(epoch)
+        # # adjust_learning_rate(optimizer, epoch)
 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch)
@@ -173,7 +198,7 @@ def main():
             'arch': args.arch,
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,
-            'optimizer' : optimizer.state_dict(),
+            'optimizer': optimizer.state_dict(),
         }, is_best)
 
 
@@ -222,8 +247,8 @@ def train(train_loader, model, criterion, optimizer, epoch):
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                   epoch, i, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, loss=losses, top1=top1, top5=top5))
+                      epoch, i, len(train_loader), batch_time=batch_time,
+                      data_time=data_time, loss=losses, top1=top1, top5=top5))
 
 
 def validate(val_loader, model, criterion):
@@ -261,8 +286,8 @@ def validate(val_loader, model, criterion):
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
                   'Prec@5 {top5.val:.3f} ({top5.avg:.3f})'.format(
-                   i, len(val_loader), batch_time=batch_time, loss=losses,
-                   top1=top1, top5=top5))
+                      i, len(val_loader), batch_time=batch_time, loss=losses,
+                      top1=top1, top5=top5))
 
     print(' * Prec@1 {top1.avg:.3f} Prec@5 {top5.avg:.3f}'
           .format(top1=top1, top5=top5))
@@ -278,6 +303,7 @@ def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
+
     def __init__(self):
         self.reset()
 
