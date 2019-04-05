@@ -35,11 +35,10 @@ def normalize_0_255(img):
     return im
 
 
-def otsu_binarize(img_path):
-    img = cv2.imread(img_path, 0)
+def otsu_binarize(img, threshold=10):
     img = normalize_0_255(img)
     # ret, th = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    ret, th = cv2.threshold(img, 10, 255, cv2.THRESH_BINARY)
+    ret, th = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY)
     # ret, th = cv2.threshold(img, 10, 255, 10)
     return th
 
@@ -55,7 +54,7 @@ def convert_to_3_channels(img):
     return img_rgb
 
 
-def remove_connected_objects(img, factor=3, is_remove_small=True):
+def remove_connected_objects(img, factor=2, is_remove_small=True):
     # find all your connected components (white blobs in your image)
     nb_components, output, stats, centroids = cv2.connectedComponentsWithStats(
         img, connectivity=8)
@@ -115,7 +114,7 @@ def get_bounding_box(img, label=255):
     return slice_x, slice_y
 
 
-def process(index, img_dirs):
+def process(index, img_dirs, is_draw=False):
     img_path = img_dirs[index]
     img = cv2.imread(img_path)
     if len(img.shape) == 3:
@@ -123,11 +122,13 @@ def process(index, img_dirs):
     if len(img.shape) > 3:
         assert (len(img.shape) > 3)
 
-    th = otsu_binarize(img_path)
+    # equ = cv2.equalizeHist(img)
+    img = normalize_0_255(img)
+    th = otsu_binarize(img, threshold=5)
     img_removed_text = remove_text(th, factor=40)
     img_filled_holes = fill_holes(img_removed_text)
     img_removed_small = remove_connected_objects(
-        img_filled_holes, factor=10)
+        img_filled_holes, factor=3)
 
     slice_x, slice_y = get_bounding_box(img_removed_small, label=255)
 
@@ -135,28 +136,38 @@ def process(index, img_dirs):
     th_roi = img_removed_small[slice_x, slice_y]
     final_mask = remove_text(th_roi, factor=50)
     final_mask_binary = np.array(final_mask/255, dtype=np.uint8)
+    W, H = final_mask_binary.shape[0], final_mask_binary.shape[1]
+    # final_mask_binary[int(0.1*W):int(0.9*W), int(0.1*H):int(0.9*H)] = 1
+
+    remove_percent = 0.1
+    final_mask_binary[int(remove_percent*W):int((1-remove_percent)*W), :] = 1
+    final_mask_binary[:, int(remove_percent*H):int((1-remove_percent)*H)] = 1
     final = np.multiply(img_1st, final_mask_binary)
 
-    h1 = stack_4_images_horizontally(
-        img, th, img_removed_text, img_filled_holes)
-    h2 = stack_4_images_horizontally(
-        img_removed_small, img_1st, final_mask, final)
+    if is_draw:
+        h1 = stack_4_images_horizontally(
+            img, th, img_removed_text, img_filled_holes)
+        h2 = stack_4_images_horizontally(
+            img_removed_small, img_1st, final_mask_binary*255, final)
 
-    # numpy_vertical = np.vstack((h1, h2))
+        numpy_vertical = np.vstack((h1, h2))
 
-    h3 = stack_2_images_horizontally(
-        img, img_1st)
+        h3 = stack_2_images_horizontally(
+            img, final)
 
-    
-    # cv2.imshow('Done', h3)
-    # cv2.waitKey(0)
+        # cv2.imshow(path_utils.get_filename_without_extension(img_path), numpy_vertical)
+        # cv2.imshow("Done", numpy_vertical)
+        cv2.imshow('Done', h3)
+        cv2.waitKey(0)
+
+    return final
 
 
 def main():
     img_dirs = glob.glob(os.path.join(
-        "C:/Users/minhm/Downloads/vqa_med/ImageClef-2019-VQA-Med-Training/Train_images", "*.jpg"))
+        "data/raw/vqa_med/ImageClef-2019-VQA-Med-Training/Train_images", "*.jpg"))
     img_dirs = glob.glob(os.path.join(
-        "C:/Users/minhm/Downloads/vqa_med/ImageClef-2019-VQA-Med-Validation/Val_images", "*.jpg"))                
+        "data/raw/vqa_med/ImageClef-2019-VQA-Med-Validation/Val_images", "*.jpg"))
     shuffle(img_dirs)
 
     for index in range(3000):
