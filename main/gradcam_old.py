@@ -78,35 +78,14 @@ class FeatureExtractor():
     def save_gradient(self, grad):
         self.gradients.append(grad)
 
-    def _fusion_att(self, x_v, x_q):
-        x_att = torch.pow(x_q, 2)
-        x_att = torch.mul(x_v, x_att)
-        return x_att
-
-    def _fusion_classif(self, x_v, x_q):
-        x_mm = torch.pow(x_q, 2)
-        x_mm = torch.mul(x_v, x_mm)
-        return x_mm
-
-    def __call__(self, x, y):
+    def __call__(self, x):
         outputs = []
         self.gradients = []
         for name, module in self.model._modules.items():
-            if name == "seq2vec":
-                x_q_vec = module(y)
-            if name == "conv_v_att":
-                x_v = module(x)
-            if name == "linear_q_att":
-                x_q = module(x_q_vec)
-                x_q = x_q.view(1,
-                               1,
-                               2048)
-                x_q = x_q.expand(1,
-                                 7 * 7,
-                                 2048)
+            x = module(x)
             if name in self.target_layers:
-                x_v.register_hook(self.save_gradient)
-                outputs += [x_v]
+                x.register_hook(self.save_gradient)
+                outputs += [x]
         return outputs, x
 
 
@@ -119,13 +98,13 @@ class ModelOutputs():
     def __init__(self, model, target_layers):
         self.model = model
         self.feature_extractor = FeatureExtractor(
-            self.model, target_layers)
+            self.model.features, target_layers)
 
     def get_gradients(self):
         return self.feature_extractor.gradients
 
-    def __call__(self, x, y):
-        target_activations, output = self.feature_extractor(x, y)
+    def __call__(self, x):
+        target_activations, output = self.feature_extractor(x)
         output = output.view(output.size(0), -1)
         output = self.model.classifier(output)
         return target_activations, output
@@ -141,47 +120,29 @@ class GradCam:
 
         self.extractor = ModelOutputs(self.model, target_layer_names)
 
-    def forward(self, visual_features, question_features):
-        return self.model(visual_features, question_features)
+    def forward(self, input):
+        return self.model(input)
 
-    def __call__(self, visual_features, question_features, index=None):
+    def __call__(self, input, index=None):
         if self.cuda:
-            features, output = self.extractor(
-                visual_features.cuda(), question_features.cuda())
+            features, output = self.extractor(input.cuda())
         else:
-            features, output = self.extractor(
-                visual_features, question_features)
+            features, output = self.extractor(input)
 
         if index == None:
             index = np.argmax(output.cpu().data.numpy())
 
-        logit = self.model(visual_features, question_features)
-
-        h_x = F.softmax(logit, dim=1).data.squeeze()
-        probs, idx = h_x.sort(0, True)
-        output = h_x
-        probs = probs.cpu().numpy()
-        idx = idx.cpu().numpy()
-
-        one_hot = np.zeros((1, probs.size), dtype=np.float32)
-        one_hot[0][idx[0]] = 1
+        one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
+        one_hot[0][index] = 1
         one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
-        one_hot = torch.sum(one_hot.cuda() * output)
-        self.model.conv_v_att.zero_grad()
-        self.model.linear_classif.zero_grad()
+        if self.cuda:
+            one_hot = torch.sum(one_hot.cuda() * output)
+        else:
+            one_hot = torch.sum(one_hot * output)
+
+        self.model.features.zero_grad()
+        self.model.classifier.zero_grad()
         one_hot.backward(retain_graph=True)
-
-        # one_hot = np.zeros((1, output.size()[-1]), dtype=np.float32)
-        # one_hot[0][index] = 1
-        # one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
-        # if self.cuda:
-        #     one_hot = torch.sum(one_hot.cuda() * output)
-        # else:
-        #     one_hot = torch.sum(one_hot * output)
-
-        # self.model.features.zero_grad()
-        # self.model.classifier.zero_grad()
-        # one_hot.backward(retain_graph=True)
 
         grads_val = self.extractor.get_gradients()[-1].cpu().data.numpy()
 
@@ -430,26 +391,6 @@ def get_gadcam_vqa(feature_conv, weight_softmax, weight_softmax_b, class_idx):
     return cam
 
 
-def get_gadcam_vqa_new(features):
-    # generate the class activation maps upsample to 256x256
-    target = (features[0] + features[1] + features[2] + features[3])/4
-    target = target.cpu().data.numpy()[0, :]
-
-    weights = np.mean(target, axis=(0))
-    cam = np.zeros(target.shape[0], dtype=np.float32)
-
-    for i, w in enumerate(weights):
-        cam += w * target[:, i]
-    cam = cam.reshape((7, 7))
-    size_upsample = (256, 256)
-
-    cam = np.maximum(cam, 0)
-    cam = cv2.resize(cam, size_upsample)
-    cam = cam - np.min(cam)
-    cam = cam / np.max(cam)
-    return cam
-
-
 def get_gradcam_from_vqa_model(visual_features,
                                question_features,
                                features_blobs_visual,
@@ -461,13 +402,9 @@ def get_gradcam_from_vqa_model(visual_features,
                                dataset,
                                vqa_model="minhmul_noatt_train_2048",
                                finalconv_name="linear_classif",
-                               is_show_image=False,
-                               is_att=True):
+                               is_show_image=False):
 
-    # grad_cam = GradCam(model=model,
-    #                    target_layer_names=["conv_v_att"], use_cuda=True)
-
-    # mask = grad_cam(visual_features, question_features)
+    model.eval()
 
     # hook the feature extractor
     features_blobs = []
@@ -492,22 +429,27 @@ def get_gradcam_from_vqa_model(visual_features,
         classif_w_params = temp_classif_w_params
         classif_b_params = np.squeeze(params[27].data.cpu().numpy())
 
+    logit = model(visual_features, question_features)
 
-    if is_att:
-        logit, list_v_record = model(visual_features, question_features)
-        cam = get_gadcam_vqa_new(list_v_record)
-    
-    else:
-        logit = model(visual_features, question_features)
-        h_x = F.softmax(logit, dim=1).data.squeeze()
-        probs, idx = h_x.sort(0, True)
-        probs = probs.cpu().numpy()
-        idx = idx.cpu().numpy()
+    h_x = F.softmax(logit, dim=1).data.squeeze()
+    probs, idx = h_x.sort(0, True)
+    output = h_x
+    probs = probs.cpu().numpy()
+    idx = idx.cpu().numpy()
 
-        cam = get_gadcam_vqa(features_blobs_visual[0],
-                            classif_w_params, classif_b_params, [idx[0]])
+    one_hot = np.zeros((1, probs.size), dtype=np.float32)
+    one_hot[0][idx[0]] = 1
+    one_hot = Variable(torch.from_numpy(one_hot), requires_grad=True)
+    one_hot = torch.sum(one_hot.cuda() * output)
 
-    
+    model.conv_v_att.zero_grad()
+    model.linear_classif.zero_grad()
+    one_hot.backward(retain_graph=True)
+    cam = get_gadcam_vqa(features_blobs_visual[0],
+                         classif_w_params, classif_b_params, [idx[0]])
+
+    # render the CAM and output
+    # print('output CAM.jpg for the top1 prediction: %s' % ans["ans"][idx[0]])
 
     img_name = paths_utils.get_filename_without_extension(path_img)
 
@@ -516,7 +458,6 @@ def get_gradcam_from_vqa_model(visual_features,
     img = cv2.imread(in_path)
 
     result = show_cam_on_image(img, cam)
-    
 
     question_str = question_str.replace(' ', '-')
 
@@ -576,21 +517,16 @@ def initialize(args, dataset="breast"):
     return cnn, model, trainset
 
 
-def process_one_example(args, cnn, model, trainset, path_img, question_str, dataset="breast", is_show_image=False, is_att=False):
+def process_one_example(args, cnn, model, trainset, path_img, question_str, dataset="breast", is_show_image=False):
     print("\n>> extract visual features...")
     visual_features = process_visual(path_img, cnn, args.vqa_model)
 
     print("\n>> extract question features...")
     question_features = process_question(args, question_str, trainset)
 
-    if is_att:
-        print("\n>> get answers...")
-        answer, answer_sm = process_answer(
-            model(visual_features, question_features)[0], trainset, model, dataset)
-    else:
-        print("\n>> get answers...")
-        answer, answer_sm = process_answer(
-            model(visual_features, question_features), trainset, model, dataset)
+    print("\n>> get answers...")
+    answer, answer_sm = process_answer(
+        model(visual_features, question_features), trainset, model, dataset)
 
     print("\n>> get gradcam of cnn...")
     result, out_path, features_blobs_visual = get_gradcam_from_image_model(
@@ -637,8 +573,8 @@ def main(dataset="breast"):
         "is there any invasive carcinoma in the image",
         "what is the major class",
         "what is the minor class",
-        "is there benign in the region 64_64_16_16",
-        "is there invasive carcinoma in the region 80_80_16_16",
+        "is there benign in the region 64_64_16_16?",
+        "is there invasive carcinoma in the region 80_80_16_16?",
     ]
 
     LIST_QUESTION_TOOLS = [
@@ -659,8 +595,8 @@ def main(dataset="breast"):
         "is there hard exudates in the fundus",
         "is hard exudates larger than soft exudates",
         "is haemorrhages smaller than microaneurysms",
-        "is there haemorrhages in the region 64_64_16_16",
-        "is there microaneurysms in the region 80_80_16_16",
+        "is there haemorrhages in the region 64_64_16_16?",
+        "is there microaneurysms in the region 80_80_16_16?",
     ]
 
     if dataset == "breast":
@@ -675,34 +611,32 @@ def main(dataset="breast"):
 
     img_dirs = glob.glob(os.path.join(path, ext))
 
-    args = update_args(
-        args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
+    # args = update_args(
+    #     args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
 
-    cnn, model, trainset = initialize(args, dataset=dataset)
+    # cnn, model, trainset = initialize(args, dataset=dataset)
 
-    for question_str in list_question:
-        for path_img in img_dirs:
-            visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
-                                                                                                            cnn,
-                                                                                                            model,
-                                                                                                            trainset,
-                                                                                                            path_img,
-                                                                                                            question_str,
-                                                                                                            dataset=dataset,
-                                                                                                            is_att=False)
+    # for question_str in list_question:
+    #     for path_img in img_dirs:
+    #         visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
+    #                                                                                                         cnn,
+    #                                                                                                         model,
+    #                                                                                                         trainset,
+    #                                                                                                         path_img,
+    #                                                                                                         question_str,
+    #                                                                                                         dataset=dataset)
 
-            get_gradcam_from_vqa_model(visual_features,
-                                       question_features,
-                                       features_blobs_visual,
-                                       ans,
-                                       path_img,
-                                       cnn,
-                                       model,
-                                       question_str,
-                                       dataset,
-                                       vqa_model="minhmul_noatt_train_2048",
-                                       finalconv_name="linear_classif",
-                                       is_att=False)
+    #         get_gradcam_from_vqa_model(visual_features,
+    #                                    question_features,
+    #                                    features_blobs_visual,
+    #                                    ans,
+    #                                    path_img,
+    #                                    cnn,
+    #                                    model,
+    #                                    question_str,
+    #                                    dataset,
+    #                                    vqa_model="minhmul_noatt_train_2048",
+    #                                    finalconv_name="linear_classif")
 
     args = update_args(
         args, vqa_model="minhmul_att_train_2048", dataset=dataset)
@@ -717,8 +651,7 @@ def main(dataset="breast"):
                                                                                                             trainset,
                                                                                                             path_img,
                                                                                                             question_str,
-                                                                                                            dataset=dataset,
-                                                                                                            is_att=True)
+                                                                                                            dataset=dataset)
 
             get_gradcam_from_vqa_model(visual_features,
                                        question_features,
@@ -730,14 +663,13 @@ def main(dataset="breast"):
                                        question_str,
                                        dataset,
                                        vqa_model="minhmul_att_train_2048",
-                                       finalconv_name="linear_classif",
-                                       is_att=True)
+                                       finalconv_name="linear_classif")
 
 
 if __name__ == '__main__':
-    dataset = "breast"
-    main(dataset)
+    # dataset = "breast"
+    # main(dataset)
     dataset = "tools"
     main(dataset)
-    dataset = "idrid"
-    main(dataset)
+    # dataset = "idrid"
+    # main(dataset)
