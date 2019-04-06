@@ -110,9 +110,6 @@ def main():
         num_workers=0
     )
 
-
-
-
     args.distributed = args.world_size > 1
 
     if args.distributed:

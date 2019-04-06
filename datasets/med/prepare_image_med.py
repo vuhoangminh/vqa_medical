@@ -113,9 +113,6 @@ def get_class_image_model(df, line):
     line = line.split("|")
     image, question, answer = line[0], line[1], line[2].split("\n")[0]
 
-    if image == "synpic47258":
-        a = 2
-
     plane_keys = list(LIST_PLANE.keys())
     organ_keys = list(LIST_ORGAN.keys())
     modality_keys = list(LIST_MODALITY.keys())
@@ -158,11 +155,6 @@ def get_class_image_model(df, line):
                                          "organ": [""]}), ignore_index=True)
         else:
             df.at[index[0], 'modality'] = modality
-
-    # print(df.at[2570, "image"])
-    # print(df.at[2570, "plane"])
-    # print(df.at[2570, "organ"])
-    # print(df.at[2570, "modality"])
     return df
 
 
@@ -191,7 +183,8 @@ def move_to_corresponding_label_classification():
         label = row["label"]
         label_dir = os.path.join(CLASSIFICATION_DIR, label)
         path_utils.make_dir(label_dir)
-        in_path = os.path.join(PREPROCESSED_DIR, "train", "{}.jpg".format(image))
+        in_path = os.path.join(PREPROCESSED_DIR, "train",
+                               "{}.jpg".format(image))
         out_path = os.path.join(label_dir, "{}.jpg".format(image))
         shutil.copy(in_path, out_path)
 

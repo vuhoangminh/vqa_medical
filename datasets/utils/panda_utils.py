@@ -38,16 +38,16 @@ def create_questions(df, dataset, dir_interim):
                 temp_dataset_questions_annotations = temp_dataset_questions_annotations + \
                     [row_dict]
 
-            if index % 1000 == 0 and index>0:
+            if index % 1000 == 0 and index > 0:
                 sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
-                                (index, len(df), index*100.0/len(df)))
+                                 (index, len(df), index*100.0/len(df)))
                 sys.stdout.flush()
                 dataset_questions = dataset_questions + \
                     temp_dataset_questions_annotations
                 temp_dataset_questions_annotations = []
 
         dataset_questions = dataset_questions + \
-                temp_dataset_questions_annotations
+            temp_dataset_questions_annotations
         json_data = dataset_questions
 
         with open(filename, 'w') as fp:
@@ -88,16 +88,16 @@ def create_questions_annotations(df, dataset, dir_interim):
                 temp_dataset_questions_annotations = temp_dataset_questions_annotations + \
                     [row_dict]
 
-            if index % 1000 == 0 and index>0:
+            if index % 1000 == 0 and index > 0:
                 sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
-                                (index, len(df), index*100.0/len(df)))
+                                 (index, len(df), index*100.0/len(df)))
                 sys.stdout.flush()
                 dataset_questions_annotations = dataset_questions_annotations + \
                     temp_dataset_questions_annotations
                 temp_dataset_questions_annotations = []
 
         dataset_questions_annotations = dataset_questions_annotations + \
-                temp_dataset_questions_annotations
+            temp_dataset_questions_annotations
         json_data = dataset_questions_annotations
 
         with open(filename, 'w+') as fp:
@@ -118,7 +118,7 @@ def create_full_imageid_quesid_questype(df, dir_interim):
         # print("processing {}/{}".format(index+1, len(df)))
         if index % 10 == 0:
             sys.stdout.write("processing %d/%d (%.2f%% done)   \r" %
-                            (index, len(df), index*100.0/len(df)))
+                             (index, len(df), index*100.0/len(df)))
             sys.stdout.flush()
         file_id = row['file_id']
         dataset = row['dataset']
@@ -136,23 +136,20 @@ def create_full_imageid_quesid_questype(df, dir_interim):
             question_id = str(image_id + str(question_i).zfill(6)).zfill(12)
             answer = row[question]
             row_df = pd.DataFrame({'file_id': [file_id],
-                                'image_id': [image_id],
-                                'question': [question],
-                                'question_id': [question_id],
-                                'question_type': ['is the'],
-                                'answer': [answer],
-                                'multiple_choice_answer': [answer],
-                                'answer_confidence': ['yes'],
-                                'answer_id': [1],
-                                'dataset': [dataset]
-                                })
+                                   'image_id': [image_id],
+                                   'question': [question],
+                                   'question_id': [question_id],
+                                   'question_type': ['is the'],
+                                   'answer': [answer],
+                                   'multiple_choice_answer': [answer],
+                                   'answer_confidence': ['yes'],
+                                   'answer_id': [1],
+                                   'dataset': [dataset]
+                                   })
             if len(temp_df) == 0:
                 temp_df = row_df
             else:
                 temp_df = temp_df.append(row_df)
-            # start = len(full_df)
-            # stop = start + len(temp)
-            # full_df.loc[start:stop] = temp.loc[0:len(temp)]
             question_i = question_i + 1
         if len(full_df) == 0:
             full_df = temp_df
@@ -176,7 +173,7 @@ def insert_dataset_to_df(df, segmentation_dict_tool, is_split=True):
     for index, row in temp_df.iterrows():
         file_id = row["file_id"]
         if is_split:
-            file_id = file_id.split('.')[0]            
+            file_id = file_id.split('.')[0]
         if file_id in list_train:
             temp_df["dataset"][index] = "train"
         if file_id in list_val:

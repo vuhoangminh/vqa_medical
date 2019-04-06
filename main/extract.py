@@ -17,28 +17,24 @@ import vqa.models.convnets as convnets
 import vqa.models.convnets_idrid as convnets_idrid
 import vqa.models.convnets_breast as convnets_breast
 import vqa.models.convnets_tools as convnets_tools
+import vqa.models.convnets_med as convnets_med
 import vqa.datasets as datasets
 from vqa.lib.dataloader import DataLoader
 from vqa.lib.logger import AvgMeter
 
 parser = argparse.ArgumentParser(description='Extract')
-# parser.add_argument('--dataset', default='tools',
-#                     choices=['coco', 'vgenome', 'idrid', 'tools', 'breast'],
-#                     help='dataset type: coco (default) | vgenome')
-# parser.add_argument('--dir_data', default='data/raw/m2cai16-tool-locations/preprocessed/segmentation',
-#                     help='dir dataset to download or/and load images')
-
-parser.add_argument('--dataset', default='idrid',
-                    choices=['coco', 'vgenome', 'idrid', 'tools', 'breast'],
+parser.add_argument('--dataset', default='med',
+                    choices=['coco', 'vgenome', 'idrid',
+                             'tools', 'breast', 'med'],
                     help='dataset type: coco (default) | vgenome')
-parser.add_argument('--dir_data', default='data/raw/idrid/',
+parser.add_argument('--dir_data', default='data/raw/vqa_med/',
                     help='dir dataset to download or/and load images')
 parser.add_argument('--data_split', default='train', type=str,
                     help='Options: (default) train | val | test')
-parser.add_argument('--arch', '-a', default='resnet152_idrid',
+parser.add_argument('--arch', '-a', default='resnet152_med',
                     help='model architecture: ' +
-                        ' | '.join(convnets_idrid.model_names) +
-                        ' (default: fbresnet152)')
+                    ' | '.join(convnets_idrid.model_names) +
+                    ' (default: fbresnet152)')
 parser.add_argument('--workers', default=4, type=int,
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--batch_size', '-b', default=4, type=int,
@@ -49,6 +45,7 @@ parser.add_argument('--size', default=448, type=int,
                     help='Image size (448 for noatt := avg pooling to get 224) (default:448)')
 
 debug = 1
+
 
 def main():
     global args
@@ -62,11 +59,17 @@ def main():
 
     # if debug:
     if args.dataset == "idrid":
-        model = convnets_idrid.factory({'arch':args.arch}, cuda=True, data_parallel=True)
+        model = convnets_idrid.factory(
+            {'arch': args.arch}, cuda=True, data_parallel=True)
     elif args.dataset == "tools":
-        model = convnets_tools.factory({'arch':args.arch}, cuda=True, data_parallel=True)
+        model = convnets_tools.factory(
+            {'arch': args.arch}, cuda=True, data_parallel=True)
     elif args.dataset == "breast":
-        model = convnets_breast.factory({'arch':args.arch}, cuda=True, data_parallel=True)
+        model = convnets_breast.factory(
+            {'arch': args.arch}, cuda=True, data_parallel=True)
+    elif args.dataset == "med":
+        model = convnets_med.factory(
+            {'arch': args.arch}, cuda=True, data_parallel=True)
 
     extract_name = 'arch,{}_size,{}'.format(args.arch, args.size)
 
@@ -77,48 +80,60 @@ def main():
         if 'coco' not in args.dir_data:
             raise ValueError('"coco" string not in dir_data')
         dataset = datasets.COCOImages(args.data_split, dict(dir=args.dir_data),
-            transform=transforms.Compose([
-                transforms.Scale(args.size),
-                transforms.CenterCrop(args.size),
-                transforms.ToTensor()
-            ]))
+                                      transform=transforms.Compose([
+                                          transforms.Scale(args.size),
+                                          transforms.CenterCrop(args.size),
+                                          transforms.ToTensor()
+                                      ]))
     elif args.dataset == 'vgenome':
         if args.data_split != 'train':
             raise ValueError('train split is required for vgenome')
         if 'vgenome' not in args.dir_data:
             raise ValueError('"vgenome" string not in dir_data')
         dataset = datasets.VisualGenomeImages(args.data_split, dict(dir=args.dir_data),
-            transform=transforms.Compose([
-                transforms.Scale(args.size),
-                transforms.CenterCrop(args.size),
-                transforms.ToTensor(),
-                normalize,
-            ]))
+                                              transform=transforms.Compose([
+                                                  transforms.Scale(args.size),
+                                                  transforms.CenterCrop(
+                                                      args.size),
+                                                  transforms.ToTensor(),
+                                                  normalize,
+                                              ]))
     elif args.dataset == 'idrid':
         dataset = datasets.IDRIDImages(args.data_split, dict(dir=args.dir_data),
-            transform=transforms.Compose([
-                transforms.Scale(args.size),
-                transforms.CenterCrop(args.size),
-                transforms.ToTensor()
-            ]))
+                                       transform=transforms.Compose([
+                                           transforms.Scale(args.size),
+                                           transforms.CenterCrop(args.size),
+                                           transforms.ToTensor(),
+                                           normalize,
+                                       ]))
     elif args.dataset == 'tools':
         dataset = datasets.TOOLSImages(args.data_split, dict(dir=args.dir_data),
-            transform=transforms.Compose([
-                transforms.Scale(args.size),
-                transforms.CenterCrop(args.size),
-                transforms.ToTensor()
-            ]))
+                                       transform=transforms.Compose([
+                                           transforms.Scale(args.size),
+                                           transforms.CenterCrop(args.size),
+                                           transforms.ToTensor(),
+                                           normalize,
+                                       ]))
     elif args.dataset == 'breast':
         dataset = datasets.BREASTImages(args.data_split, dict(dir=args.dir_data),
-            transform=transforms.Compose([
-                transforms.Scale(args.size),
-                transforms.CenterCrop(args.size),
-                transforms.ToTensor()
-            ]))
+                                        transform=transforms.Compose([
+                                            transforms.Scale(args.size),
+                                            transforms.CenterCrop(args.size),
+                                            transforms.ToTensor(),
+                                            normalize,
+                                        ]))
+    elif args.dataset == 'med':
+        dataset = datasets.MEDImages(args.data_split, dict(dir=args.dir_data),
+                                     transform=transforms.Compose([
+                                         transforms.Scale(args.size),
+                                         transforms.CenterCrop(args.size),
+                                         transforms.ToTensor(),
+                                         normalize,
+                                     ]))
 
     data_loader = DataLoader(dataset,
-        batch_size=args.batch_size, shuffle=False,
-        num_workers=args.workers, pin_memory=True)
+                             batch_size=args.batch_size, shuffle=False,
+                             num_workers=args.workers, pin_memory=True)
 
     dir_extract = os.path.join(args.dir_data, 'extract', extract_name)
     path_file = os.path.join(dir_extract, args.data_split + 'set')
@@ -141,17 +156,17 @@ def extract(data_loader, model, path_file, mode):
         shape_att = (nb_images, output.size(1), output.size(2), output.size(3))
         print('Warning: shape_att={}'.format(shape_att))
         hdf5_att = hdf5_file.create_dataset('att', shape_att,
-                                            dtype='f')#, compression='gzip')
+                                            dtype='f')  # , compression='gzip')
     if mode == 'both' or mode == 'noatt':
         shape_noatt = (nb_images, output.size(1))
         print('Warning: shape_noatt={}'.format(shape_noatt))
         hdf5_noatt = hdf5_file.create_dataset('noatt', shape_noatt,
-                                              dtype='f')#, compression='gzip')
+                                              dtype='f')  # , compression='gzip')
 
     model.eval()
 
     batch_time = AvgMeter()
-    data_time  = AvgMeter()
+    data_time = AvgMeter()
     begin = time.time()
     end = time.time()
 
@@ -165,7 +180,7 @@ def extract(data_loader, model, path_file, mode):
 
         batch_size = output_att.size(0)
         if mode == 'both' or mode == 'att':
-            hdf5_att[idx:idx+batch_size]   = output_att.data.cpu().numpy()
+            hdf5_att[idx:idx+batch_size] = output_att.data.cpu().numpy()
         if mode == 'both' or mode == 'noatt':
             hdf5_noatt[idx:idx+batch_size] = output_noatt.data.cpu().numpy()
         idx += batch_size
@@ -178,9 +193,9 @@ def extract(data_loader, model, path_file, mode):
             print('Extract: [{0}/{1}]\t'
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                   'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'.format(
-                   i, len(data_loader),
-                   batch_time=batch_time,
-                   data_time=data_time,))
+                      i, len(data_loader),
+                      batch_time=batch_time,
+                      data_time=data_time,))
 
     hdf5_file.close()
 
@@ -190,7 +205,7 @@ def extract(data_loader, model, path_file, mode):
             handle.write(name + '\n')
 
     end = time.time() - begin
-    print('Finished in {}m and {}s'.format(int(end/60), int(end%60)))
+    print('Finished in {}m and {}s'.format(int(end/60), int(end % 60)))
 
 
 if __name__ == '__main__':
