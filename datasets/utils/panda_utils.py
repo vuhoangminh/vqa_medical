@@ -11,9 +11,9 @@ def generate_image_id(index):
     return image_id
 
 
-def create_questions(df, dataset, dir_interim):
+def create_questions(df, dataset, dir_interim, dataset_default="val"):
     filename = dir_interim + dataset + '_questions.json'
-    dataset = "val"
+    dataset = dataset_default
 
     if os.path.exists(filename):
         print('>> loading', filename)
@@ -59,6 +59,10 @@ def create_questions(df, dataset, dir_interim):
 
 def create_questions_annotations(df, dataset, dir_interim):
     filename = dir_interim + dataset + '_questions_annotations.json'
+    if dataset == "trainval":
+        dataset = ["train", "val"]
+    else:
+        dataset = [dataset]
 
     if os.path.exists(filename):
         print('>> loading', filename)
@@ -71,7 +75,7 @@ def create_questions_annotations(df, dataset, dir_interim):
             if index == 0:
                 temp_dataset_questions_annotations = []
 
-            if row['dataset'] == dataset:
+            if row['dataset'] in dataset:
                 question_id = str(row['question_id']).zfill(12)
                 image_name = row['file_id']
                 question = row['question']

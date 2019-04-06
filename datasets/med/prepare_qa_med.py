@@ -1,5 +1,7 @@
 import os
 import glob
+import re
+import unidecode
 import pandas as pd
 from tqdm import tqdm
 import datasets.utils.paths_utils as path_utils
@@ -59,7 +61,7 @@ def prepare_qa_per_question(full_df, cols, df_id, dataset="train"):
     else:
         qa_path = QA_TEST_TXT
 
-    with open(qa_path, encoding="utf8") as f:
+    with open(qa_path, encoding='UTF-8') as f:
         lines = f.readlines()
 
     temp_df = pd.DataFrame(columns=cols)
@@ -69,8 +71,11 @@ def prepare_qa_per_question(full_df, cols, df_id, dataset="train"):
 
         if dataset in ["train", "val"]:
             image, question, answer = line[0], line[1], line[2].split("\n")[0]
+            question = question.encode('ascii', 'ignore').decode('ascii')
+            answer = answer.encode('ascii', 'ignore').decode('ascii')
         else:
             image, question = line[0], line[1].split("\n")[0]
+            question = question.encode('ascii', 'ignore').decode('ascii')
 
         file_id = image + ".jpg"
         image_id = str(int(df_id.at[df_id.index[df_id['file_id'] == file_id].tolist()[
@@ -153,6 +158,7 @@ def main():
         full_df = pd.DataFrame(columns=cols)
         full_df = prepare_qa_per_question(
             full_df, cols, df_id, dataset="val")
+        full_df.to_csv(PROCESSED_QA_PER_QUESTION_PATH, index=False)
         full_df = prepare_qa_per_question(
             full_df, cols, df_id, dataset="test")
         full_df = prepare_qa_per_question(
