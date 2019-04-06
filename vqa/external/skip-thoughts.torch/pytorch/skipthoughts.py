@@ -131,6 +131,8 @@ class AbstractSkipThoughts(nn.Module):
  
     def _process_lengths(self, input):
         max_length = input.size(1)
+
+        # switch here for gradcam and train // need to fix
         if "1.0" in torch.__version__:
             lengths = [max_length - input.data.eq(0).sum(1).squeeze()]
         else:

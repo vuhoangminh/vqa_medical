@@ -60,7 +60,7 @@ parser.add_argument('--save_all_from', type=int,
                          ''' then keep all (useful to save disk space)')''')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation and test set')
-parser.add_argument('-j', '--workers', default=2, type=int,
+parser.add_argument('-j', '--workers', default=0, type=int,
                     help='number of data loading workers')
 parser.add_argument('--print_freq', '-p', default=2, type=int,
                     help='print frequency')
@@ -286,7 +286,7 @@ def save_results(results, epoch, split_name, dir_logs, dir_vqa):
     with open(path_rslt, 'w') as handle:
         json.dump(results, handle)
     if not 'test' in split_name:
-        os.system('python2 eval_res.py --dir_vqa {} --dir_epoch {} --subtype {} &'
+        os.system('python main/eval_res.py --dir_vqa {} --dir_epoch {} --subtype {} &'
                   .format(dir_vqa, dir_epoch, split_name))
 
 def save_checkpoint(info, model, optim, dir_logs, save_model, save_all_from=None, is_best=True):

@@ -17,10 +17,10 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10):
 
         input_visual   = Variable(sample['visual'])
         input_question = Variable(sample['question'])
-        target_answer  = Variable(sample['answer'].cuda(async=True))
+        target_answer  = Variable(sample['answer'].cuda())
 
         # compute output
-        output = model(input_visual, input_question)
+        output, hidden = model(input_visual, input_question)
         torch.cuda.synchronize()
         loss = criterion(output, target_answer)
         meters['loss'].update(loss.item(), n=batch_size)
@@ -71,12 +71,12 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
     end = time.time()
     for i, sample in enumerate(loader):
         batch_size = sample['visual'].size(0)
-        input_visual   = Variable(sample['visual'].cuda(async=True), volatile=True)
-        input_question = Variable(sample['question'].cuda(async=True), volatile=True)
-        target_answer  = Variable(sample['answer'].cuda(async=True), volatile=True)
+        input_visual   = Variable(sample['visual'].cuda(), volatile=True)
+        input_question = Variable(sample['question'].cuda(), volatile=True)
+        target_answer  = Variable(sample['answer'].cuda(), volatile=True)
 
         # compute output
-        output = model(input_visual, input_question)
+        output, hidden = model(input_visual, input_question)
         # loss = criterion(output, target_answer)
         # meters['loss'].update(loss.item(), n=batch_size)
 
@@ -124,8 +124,8 @@ def test(loader, model, logger, epoch=0, print_freq=10):
     end = time.time()
     for i, sample in enumerate(loader):
         batch_size = sample['visual'].size(0)
-        input_visual   = Variable(sample['visual'].cuda(async=True), volatile=True)
-        input_question = Variable(sample['question'].cuda(async=True), volatile=True)
+        input_visual   = Variable(sample['visual'].cuda(), volatile=True)
+        input_question = Variable(sample['question'].cuda(), volatile=True)
 
         # compute output
         output = model(input_visual, input_question)

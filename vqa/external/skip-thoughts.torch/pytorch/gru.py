@@ -144,6 +144,7 @@ class BayesianGRU(AbstractGRU):
     def forward(self, x, hx=None, max_length=None):
         batch_size = x.size(0)
         seq_length = x.size(1)
+        # print(max_length)
         if max_length is None:
             max_length = seq_length
         output = []

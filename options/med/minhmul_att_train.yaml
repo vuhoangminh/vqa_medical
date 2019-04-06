@@ -4,7 +4,7 @@ vqa:
     dataset: VQA
     dir: data/vqa_med
     trainsplit: train
-    nans: 844
+    nans: 1000
     maxlength: 26
     minwcount: 0
     nlp: mcb
@@ -27,7 +27,7 @@ model:
         fixed_emb: False
     attention:
         nb_glimpses: 4
-        dim_h: 1988
+        dim_h: 1200
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
@@ -35,7 +35,7 @@ model:
         activation_q: tanh
         activation_mm: tanh
     fusion:
-        dim_h: 1988
+        dim_h: 1200
         dropout_v: 0.5
         dropout_q: 0.5
         activation_v: tanh
@@ -45,5 +45,5 @@ model:
         dropout: 0.5
 optim:
     lr: 0.0001
-    batch_size: 64
+    batch_size: 128
     epochs: 100
