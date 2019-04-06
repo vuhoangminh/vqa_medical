@@ -32,7 +32,7 @@ def separate_resnet_bn_paras(modules):
                 paras_only_bn.extend([*layer.parameters()])
             else:
                 paras_wo_bn.extend([*layer.parameters()])
-        if index > 418:
+        if index > 390:
             if 'batchnorm' in str(layer.__class__):
                 continue
             else:

@@ -27,7 +27,7 @@ parser.add_argument('--dataset', default='med',
                     choices=['coco', 'vgenome', 'idrid',
                              'tools', 'breast', 'med'],
                     help='dataset type: coco (default) | vgenome')
-parser.add_argument('--dir_data', default='data/raw/vqa_med/',
+parser.add_argument('--dir_data', default='data/raw/vqa_med/preprocessed',
                     help='dir dataset to download or/and load images')
 parser.add_argument('--data_split', default='train', type=str,
                     help='Options: (default) train | val | test')
@@ -81,7 +81,7 @@ def main():
             raise ValueError('"coco" string not in dir_data')
         dataset = datasets.COCOImages(args.data_split, dict(dir=args.dir_data),
                                       transform=transforms.Compose([
-                                          transforms.Scale(args.size),
+                                          transforms.Resize(args.size),
                                           transforms.CenterCrop(args.size),
                                           transforms.ToTensor()
                                       ]))
@@ -92,7 +92,7 @@ def main():
             raise ValueError('"vgenome" string not in dir_data')
         dataset = datasets.VisualGenomeImages(args.data_split, dict(dir=args.dir_data),
                                               transform=transforms.Compose([
-                                                  transforms.Scale(args.size),
+                                                  transforms.Resize(args.size),
                                                   transforms.CenterCrop(
                                                       args.size),
                                                   transforms.ToTensor(),
@@ -101,7 +101,7 @@ def main():
     elif args.dataset == 'idrid':
         dataset = datasets.IDRIDImages(args.data_split, dict(dir=args.dir_data),
                                        transform=transforms.Compose([
-                                           transforms.Scale(args.size),
+                                           transforms.Resize(args.size),
                                            transforms.CenterCrop(args.size),
                                            transforms.ToTensor(),
                                            normalize,
@@ -109,7 +109,7 @@ def main():
     elif args.dataset == 'tools':
         dataset = datasets.TOOLSImages(args.data_split, dict(dir=args.dir_data),
                                        transform=transforms.Compose([
-                                           transforms.Scale(args.size),
+                                           transforms.Resize(args.size),
                                            transforms.CenterCrop(args.size),
                                            transforms.ToTensor(),
                                            normalize,
@@ -117,7 +117,7 @@ def main():
     elif args.dataset == 'breast':
         dataset = datasets.BREASTImages(args.data_split, dict(dir=args.dir_data),
                                         transform=transforms.Compose([
-                                            transforms.Scale(args.size),
+                                            transforms.Resize(args.size),
                                             transforms.CenterCrop(args.size),
                                             transforms.ToTensor(),
                                             normalize,

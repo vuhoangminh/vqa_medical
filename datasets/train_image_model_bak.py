@@ -146,7 +146,7 @@ def main():
     _ , _, paras_wo_bn_to_finetune = augment_utils.separate_resnet_bn_paras(model)
 
     # optimizer = torch.optim.Adam(paras_wo_bn_to_finetune, lr=0.001)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
     # optionally resume from a checkpoint
     if args.resume:
