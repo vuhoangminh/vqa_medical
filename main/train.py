@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str, 
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/vqa/minhmul_att_train_2048.yaml', type=str, 
+parser.add_argument('--path_opt', default='options/med/minhmul_att_train.yaml', type=str, 
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
