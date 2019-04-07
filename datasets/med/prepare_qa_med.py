@@ -1,3 +1,4 @@
+from datasets.med.prepare_image_med import LIST_AUGMENT
 import os
 import glob
 import re
@@ -28,15 +29,28 @@ DATASETS_TRAIN_TXT = PROJECT_DIR + \
     "/data/raw/vqa_med/ImageClef-2019-VQA-Med-Training/All_QA_Pairs_train.txt"
 RAW_DIR = PROJECT_DIR + "/data/vqa_med/raw/raw/"
 PROCESSED_QA_PER_QUESTION_PATH = RAW_DIR + "med_qa_per_question.csv"
-PROCESSED_QA_PER_QUESTION_AUGMENT_PATH = RAW_DIR + "med_qa_per_question_augment.csv"
+PROCESSED_QA_PER_QUESTION_AUGMENT_PATH = RAW_DIR + \
+    "med_qa_per_question_augment.csv"
+
+PREPROCESSED_DIR = PROJECT_DIR + \
+    "/data/raw/vqa_med/preprocessed/raw"
+
 IMAGEID_PATH = RAW_DIR + "image_id.csv"
 path_utils.make_dir(RAW_DIR)
 
 
-def generate_image_id():
-    img_train_paths = glob.glob(os.path.join(DATASETS_TRAIN_DIR, "*.jpg"))
-    img_val_paths = glob.glob(os.path.join(DATASETS_VALID_DIR, "*.jpg"))
-    img_test_paths = glob.glob(os.path.join(DATASETS_TEST_DIR, "*.jpg"))
+def generate_image_id(is_augment=False):
+    if is_augment:
+        img_train_paths = glob.glob(os.path.join(
+            PREPROCESSED_DIR, "train_augment", "*.jpg"))
+        img_val_paths = glob.glob(os.path.join(
+            PREPROCESSED_DIR, "val_augment", "*.jpg"))
+        img_test_paths = glob.glob(os.path.join(
+            PREPROCESSED_DIR, "test_augment", "*.jpg"))
+    else:
+        img_train_paths = glob.glob(os.path.join(DATASETS_TRAIN_DIR, "*.jpg"))
+        img_val_paths = glob.glob(os.path.join(DATASETS_VALID_DIR, "*.jpg"))
+        img_test_paths = glob.glob(os.path.join(DATASETS_TEST_DIR, "*.jpg"))
 
     img_paths = img_train_paths + img_val_paths + img_test_paths
 
@@ -51,6 +65,38 @@ def generate_image_id():
 
     df.to_csv(IMAGEID_PATH, index=False)
     return df
+
+
+def append_row(temp_df, dataset, file_id, image_id, question, question_id, answer=""):
+    if dataset in ["train", "val"]:
+        row_df = pd.DataFrame({'file_id': [file_id],
+                               'image_id': [image_id],
+                               'question': [question],
+                               'question_id': [question_id],
+                               'question_type': ['is the'],
+                               'answer': [answer],
+                               'multiple_choice_answer': [answer],
+                               'answer_confidence': ['yes'],
+                               'answer_id': [1],
+                               'dataset': [dataset]
+                               })
+    else:
+        row_df = pd.DataFrame({'file_id': [file_id],
+                               'image_id': [image_id],
+                               'question': [question],
+                               'question_id': [question_id],
+                               'question_type': [""],
+                               'answer': [""],
+                               'multiple_choice_answer': [""],
+                               'answer_confidence': [""],
+                               'answer_id': [""],
+                               'dataset': [dataset]
+                               })
+    if len(temp_df) == 0:
+        temp_df = row_df
+    else:
+        temp_df = temp_df.append(row_df, ignore_index=True)
+    return temp_df
 
 
 def prepare_qa_per_question(full_df, cols, df_id, dataset="train", is_augment=False):
@@ -85,35 +131,17 @@ def prepare_qa_per_question(full_df, cols, df_id, dataset="train", is_augment=Fa
         question_i = len(full_df.index[full_df['file_id'] == file_id].tolist())
         question_id = str(image_id + str(question_i).zfill(6)).zfill(12)
 
-        if dataset in ["train", "val"]:
-            row_df = pd.DataFrame({'file_id': [file_id],
-                                   'image_id': [image_id],
-                                   'question': [question],
-                                   'question_id': [question_id],
-                                   'question_type': ['is the'],
-                                   'answer': [answer],
-                                   'multiple_choice_answer': [answer],
-                                   'answer_confidence': ['yes'],
-                                   'answer_id': [1],
-                                   'dataset': [dataset]
-                                   })
-        else:
-            row_df = pd.DataFrame({'file_id': [file_id],
-                                   'image_id': [image_id],
-                                   'question': [question],
-                                   'question_id': [question_id],
-                                   'question_type': [""],
-                                   'answer': [""],
-                                   'multiple_choice_answer': [""],
-                                   'answer_confidence': [""],
-                                   'answer_id': [""],
-                                   'dataset': [dataset]
-                                   })
+        temp_df = append_row(temp_df, dataset, file_id,
+                             image_id, question, question_id, answer="")
 
-        if len(temp_df) == 0:
-            temp_df = row_df
-        else:
-            temp_df = temp_df.append(row_df, ignore_index=True)
+        for augment in LIST_AUGMENT:
+            file_id = image + "_" + augment + ".jpg"
+            image_id = str(int(df_id.at[df_id.index[df_id['file_id'] == file_id].tolist()[
+                0], "image_id"])).zfill(6)
+            question_i = len(full_df.index[full_df['file_id'] == file_id].tolist())
+            question_id = str(image_id + str(question_i).zfill(6)).zfill(12)                
+            temp_df = append_row(temp_df, dataset, file_id,
+                                 image_id, question, question_id, answer="")
 
         if index % 100 == 0 and index > 0:
             if len(full_df) == 0:
@@ -147,7 +175,7 @@ def main():
     if os.path.exists(IMAGEID_PATH):
         df_id = pd.read_csv(IMAGEID_PATH)
     else:
-        df_id = generate_image_id()
+        df_id = generate_image_id(is_augment=True)
 
     if os.path.exists(PROCESSED_QA_PER_QUESTION_PATH):
         full_df = pd.read_csv(PROCESSED_QA_PER_QUESTION_PATH)
@@ -164,6 +192,22 @@ def main():
             full_df, cols, df_id, dataset="test")
         full_df = prepare_qa_per_question(
             full_df, cols, df_id, dataset="train")
+        full_df.to_csv(PROCESSED_QA_PER_QUESTION_PATH, index=False)
+
+    if os.path.exists(PROCESSED_QA_PER_QUESTION_AUGMENT_PATH):
+        full_df = pd.read_csv(PROCESSED_QA_PER_QUESTION_AUGMENT_PATH)
+    else:
+        cols = ['file_id', 'image_id', 'question', 'question_id',
+                'question_type', 'answer', 'multiple_choice_answer',
+                'answer', 'answer_confidence', 'answer_id',
+                'dataset']
+        full_df = pd.DataFrame(columns=cols)
+        full_df = prepare_qa_per_question(
+            full_df, cols, df_id, dataset="val", is_augment=True)
+        full_df = prepare_qa_per_question(
+            full_df, cols, df_id, dataset="test")
+        full_df = prepare_qa_per_question(
+            full_df, cols, df_id, dataset="train", is_augment=True)
         full_df.to_csv(PROCESSED_QA_PER_QUESTION_PATH, index=False)
 
 

@@ -240,44 +240,44 @@ def preprocess_dataset(dataset="train", is_show=False, is_overwrite=False, is_au
                         preprocessed_dir, path_utils.get_filename_without_extension(img_paths[index]) + "_{}.jpg".format(augment))
                     img_preprocessed = Image.fromarray(out)
                     if augment == "fliplr":
-                        img_preprocessed = img_preprocessed.transpose(Image.FLIP_LEFT_RIGHT)
+                        img_preprocessed = img_preprocessed.transpose(
+                            Image.FLIP_LEFT_RIGHT)
                     elif augment == "rot10":
-                        img_preprocessed= img_preprocessed.rotate(10)
+                        img_preprocessed = img_preprocessed.rotate(10)
                     elif augment == "rot20":
-                        img_preprocessed= img_preprocessed.rotate(20)
+                        img_preprocessed = img_preprocessed.rotate(20)
                     elif augment == "rot30":
-                        img_preprocessed= img_preprocessed.rotate(30)
+                        img_preprocessed = img_preprocessed.rotate(30)
                     elif augment == "rot_10":
-                        img_preprocessed= img_preprocessed.rotate(-10)
+                        img_preprocessed = img_preprocessed.rotate(-10)
                     elif augment == "rot_20":
-                        img_preprocessed= img_preprocessed.rotate(-20)
+                        img_preprocessed = img_preprocessed.rotate(-20)
                     elif augment == "rot_30":
-                        img_preprocessed= img_preprocessed.rotate(-30)
-                    elif augment == "bright1":                    
-                        img_preprocessed = ie.Contrast(img_preprocessed).enhance(1)
+                        img_preprocessed = img_preprocessed.rotate(-30)
+                    elif augment == "bright1":
+                        img_preprocessed = ie.Contrast(
+                            img_preprocessed).enhance(1)
                     elif augment == "bright_1":
-                        img_preprocessed = ie.Contrast(img_preprocessed).enhance(-1)
-                    elif augment == "sharp3":                    
-                        img_preprocessed = ie.Sharpness(img_preprocessed).enhance(3)
+                        img_preprocessed = ie.Contrast(
+                            img_preprocessed).enhance(-1)
+                    elif augment == "sharp3":
+                        img_preprocessed = ie.Sharpness(
+                            img_preprocessed).enhance(3)
                     elif augment == "sharp_3":
-                        img_preprocessed = ie.Sharpness(img_preprocessed).enhance(-3)
-                    # elif augment == "contrast2":                    
+                        img_preprocessed = ie.Sharpness(
+                            img_preprocessed).enhance(-3)
+                    # elif augment == "contrast2":
                     #     img_preprocessed = ie.Contrast(img_preprocessed).enhance(2)
-                    # elif augment == "contrast_2":                        
+                    # elif augment == "contrast_2":
                     #     img_preprocessed = ie.Contrast(img_preprocessed).enhance(-2)
                     img_preprocessed.save(out_path)
-
-
-
-
-
-
 
 
 def main(overwrite=False):
     for dataset in ["train", "val", "test"]:
         preprocess_dataset(dataset=dataset, is_show=False)
-        preprocess_dataset(dataset=dataset, is_show=False, is_augment=True, is_overwrite=True)
+        preprocess_dataset(dataset=dataset, is_show=False,
+                           is_augment=True, is_overwrite=False)
 
     move_to_corresponding_label_classification()
 
