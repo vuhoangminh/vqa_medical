@@ -36,9 +36,9 @@ class GRUCell(AbstractGRUCell):
     def forward(self, x, hx=None):
         if hx is None:
             hx = Variable(x.data.new().resize_((x.size(0), self.hidden_size)).fill_(0))
-        r = F.sigmoid(self.weight_ir(x) + self.weight_hr(hx))
-        i = F.sigmoid(self.weight_ii(x) + self.weight_hi(hx))
-        n = F.tanh(self.weight_in(x) + r * self.weight_hn(hx))
+        r = torch.sigmoid(self.weight_ir(x) + self.weight_hr(hx))
+        i = torch.sigmoid(self.weight_ii(x) + self.weight_hi(hx))
+        n = torch.tanh(self.weight_in(x) + r * self.weight_hn(hx))
         hx = (1 - i) * n + i * hx
         return hx
 
@@ -77,9 +77,9 @@ class BayesianGRUCell(AbstractGRUCell):
         x_hr = self.drop_hr(hx)
         x_hi = self.drop_hi(hx)
         x_hn = self.drop_hn(hx)
-        r = F.sigmoid(self.weight_ir(x_ir) + self.weight_hr(x_hr))
-        i = F.sigmoid(self.weight_ii(x_ii) + self.weight_hi(x_hi))
-        n = F.tanh(self.weight_in(x_in) + r * self.weight_hn(x_hn))
+        r = torch.sigmoid(self.weight_ir(x_ir) + self.weight_hr(x_hr))
+        i = torch.sigmoid(self.weight_ii(x_ii) + self.weight_hi(x_hi))
+        n = torch.tanh(self.weight_in(x_in) + r * self.weight_hn(x_hn))
         hx = (1 - i) * n + i * hx
         return hx
 
