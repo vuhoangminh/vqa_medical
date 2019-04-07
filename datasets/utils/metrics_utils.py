@@ -11,13 +11,18 @@ from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 
 import datasets.utils.paths_utils as path_utils
-import datasets.utils.image_utils as image_utils
 
 
 CURRENT_WORKING_DIR = os.path.realpath(__file__)
 PROJECT_DIR = path_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
 QA_VALID_TXT = PROJECT_DIR + \
     "/data/raw/vqa_med/ImageClef-2019-VQA-Med-Validation/All_QA_Pairs_val.txt"
+
+# NLTK
+# Download Punkt tokenizer (for word_tokenize method)
+# Download stopwords (for stopword removal)
+nltk.download('punkt')
+nltk.download('stopwords')
 
 
 def compute_bleu_score(candidate_pairs, gt_pairs,
@@ -34,12 +39,6 @@ def compute_bleu_score(candidate_pairs, gt_pairs,
     max_sent = 0
     total_words = 0
     words_distrib = {}
-
-    # NLTK
-    # Download Punkt tokenizer (for word_tokenize method)
-    # Download stopwords (for stopword removal)
-    nltk.download('punkt')
-    nltk.download('stopwords')
 
     # English Stopwords
     stops = set(stopwords.words("english"))
@@ -91,6 +90,8 @@ def compute_bleu_score(candidate_pairs, gt_pairs,
                 bleu_score = 1
             # Calculate the BLEU score
             else:
+                if set(gt_words) == set(candidate_words):
+                    a = 2
                 bleu_score = nltk.translate.bleu_score.sentence_bleu(
                     [gt_words], candidate_words, smoothing_function=SmoothingFunction().method0)
         # Handle problematic cases where BLEU score calculation is impossible

@@ -27,6 +27,7 @@
 *.pkl
 logs/*
 *.gz
+*.out
 
 
 

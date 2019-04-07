@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/med/minhmul_att_train
+    dir_logs: logs/med/minhmul_att_train_imagenet
 vqa:
     dataset: VQA
     dir: data/vqa_med
@@ -12,7 +12,7 @@ vqa:
     samplingans: True
 coco:
     dir: data/raw/vqa_med/preprocessed/
-    arch: resnet152_med
+    arch: fbresnet152
     mode: att
     size: 448
 model:

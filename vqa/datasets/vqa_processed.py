@@ -27,7 +27,7 @@ def get_top_answers(examples, nans=3000):
     print('\n'.join(map(str,cw[:20])))
 
     vocab = []
-    for i in range(nans):
+    for i in range(len(cw)):
         vocab.append(cw[i][1])
     return vocab[:nans]
 
@@ -163,6 +163,9 @@ def vqa_processed(params):
         valset = json.load(open(path_val, 'r'))
     testset    = json.load(open(path_test, 'r'))
     testdevset = json.load(open(path_testdev, 'r'))
+
+    # # ugly hack to concat dictionary of train and val
+    # trainset = trainset + valset
 
     #####################################################
     ## Preprocess examples (questions and answers)
