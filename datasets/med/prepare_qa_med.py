@@ -28,6 +28,7 @@ DATASETS_TRAIN_TXT = PROJECT_DIR + \
     "/data/raw/vqa_med/ImageClef-2019-VQA-Med-Training/All_QA_Pairs_train.txt"
 RAW_DIR = PROJECT_DIR + "/data/vqa_med/raw/raw/"
 PROCESSED_QA_PER_QUESTION_PATH = RAW_DIR + "med_qa_per_question.csv"
+PROCESSED_QA_PER_QUESTION_AUGMENT_PATH = RAW_DIR + "med_qa_per_question_augment.csv"
 IMAGEID_PATH = RAW_DIR + "image_id.csv"
 path_utils.make_dir(RAW_DIR)
 
@@ -52,7 +53,7 @@ def generate_image_id():
     return df
 
 
-def prepare_qa_per_question(full_df, cols, df_id, dataset="train"):
+def prepare_qa_per_question(full_df, cols, df_id, dataset="train", is_augment=False):
 
     if dataset == "train":
         qa_path = QA_TRAIN_TXT

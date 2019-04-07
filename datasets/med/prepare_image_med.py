@@ -3,7 +3,7 @@ import datasets.utils.print_utils as print_utils
 import datasets.utils.paths_utils as path_utils
 import datasets.utils.image_utils as image_utils
 import datasets.utils.io_utils as io_utils
-import datasets.vqa_med.preprocess as preprocess
+import datasets.med.preprocess as preprocess
 from PIL import Image
 import numpy as np
 import pandas as pd
@@ -12,6 +12,7 @@ import shutil
 import random
 import cv2
 from tqdm import tqdm
+import PIL.ImageEnhance as ie
 random.seed(1988)
 
 
@@ -109,6 +110,21 @@ LIST_MODALITY = {
 }
 
 
+LIST_AUGMENT = [
+    "fliplr",
+    "rot10",
+    "rot20",
+    "rot30",
+    "rot_10",
+    "rot_20",
+    "rot_30",
+    # "bright1",
+    # "bright_1",
+    "sharp3",
+    "sharp_3",
+]
+
+
 def get_class_image_model(df, line):
     line = line.split("|")
     image, question, answer = line[0], line[1], line[2].split("\n")[0]
@@ -189,7 +205,7 @@ def move_to_corresponding_label_classification():
         shutil.copy(in_path, out_path)
 
 
-def preprocess_dataset(dataset="train", is_show=False, is_overwrite=False):
+def preprocess_dataset(dataset="train", is_show=False, is_overwrite=False, is_augment=False):
     if dataset == "train":
         dataset_dir = DATASETS_TRAIN_DIR
     elif dataset == "val":
@@ -197,7 +213,11 @@ def preprocess_dataset(dataset="train", is_show=False, is_overwrite=False):
     else:
         dataset_dir = DATASETS_TEST_DIR
 
-    preprocessed_dir = os.path.join(PREPROCESSED_DIR, dataset)
+    if is_augment:
+        preprocessed_dir = os.path.join(
+            PREPROCESSED_DIR, "raw", dataset + "_augment")
+    else:
+        preprocessed_dir = os.path.join(PREPROCESSED_DIR, "raw", dataset)
 
     if is_overwrite or not os.path.exists(preprocessed_dir):
         path_utils.make_dir(preprocessed_dir)
@@ -212,11 +232,52 @@ def preprocess_dataset(dataset="train", is_show=False, is_overwrite=False):
             out_path = os.path.join(
                 preprocessed_dir, path_utils.get_filename(img_paths[index]))
             cv2.imwrite(out_path, img_preprocessed)
+            out = img_preprocessed
+
+            if is_augment:
+                for augment in LIST_AUGMENT:
+                    out_path = os.path.join(
+                        preprocessed_dir, path_utils.get_filename_without_extension(img_paths[index]) + "_{}.jpg".format(augment))
+                    img_preprocessed = Image.fromarray(out)
+                    if augment == "fliplr":
+                        img_preprocessed = img_preprocessed.transpose(Image.FLIP_LEFT_RIGHT)
+                    elif augment == "rot10":
+                        img_preprocessed= img_preprocessed.rotate(10)
+                    elif augment == "rot20":
+                        img_preprocessed= img_preprocessed.rotate(20)
+                    elif augment == "rot30":
+                        img_preprocessed= img_preprocessed.rotate(30)
+                    elif augment == "rot_10":
+                        img_preprocessed= img_preprocessed.rotate(-10)
+                    elif augment == "rot_20":
+                        img_preprocessed= img_preprocessed.rotate(-20)
+                    elif augment == "rot_30":
+                        img_preprocessed= img_preprocessed.rotate(-30)
+                    elif augment == "bright1":                    
+                        img_preprocessed = ie.Contrast(img_preprocessed).enhance(1)
+                    elif augment == "bright_1":
+                        img_preprocessed = ie.Contrast(img_preprocessed).enhance(-1)
+                    elif augment == "sharp3":                    
+                        img_preprocessed = ie.Sharpness(img_preprocessed).enhance(3)
+                    elif augment == "sharp_3":
+                        img_preprocessed = ie.Sharpness(img_preprocessed).enhance(-3)
+                    # elif augment == "contrast2":                    
+                    #     img_preprocessed = ie.Contrast(img_preprocessed).enhance(2)
+                    # elif augment == "contrast_2":                        
+                    #     img_preprocessed = ie.Contrast(img_preprocessed).enhance(-2)
+                    img_preprocessed.save(out_path)
+
+
+
+
+
+
 
 
 def main(overwrite=False):
     for dataset in ["train", "val", "test"]:
         preprocess_dataset(dataset=dataset, is_show=False)
+        preprocess_dataset(dataset=dataset, is_show=False, is_augment=True, is_overwrite=True)
 
     move_to_corresponding_label_classification()
 
