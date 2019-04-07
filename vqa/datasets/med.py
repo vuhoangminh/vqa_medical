@@ -7,10 +7,11 @@ import torchvision.transforms as transforms
 from datasets.utils.images import ImagesFolder, AbstractImagesDataset, default_loader
 from datasets.utils.features import FeaturesDataset
 
+
 def split_name(data_split):
-    if data_split in ['train', 'val']:
+    if data_split in ['train', 'val', 'train_augment', 'val_augment']:
         return data_split
-    elif data_split == 'test':
+    elif data_split in ['test', 'test_augment']:
         return data_split
     else:
         assert False, 'data_split {} not exists'.format(data_split)
@@ -22,7 +23,8 @@ class MEDImages(AbstractImagesDataset):
         self.split_name = split_name(data_split)
         super(MEDImages, self).__init__(data_split, opt, transform, loader)
         self.dir_split = self.get_dir_data()
-        self.dataset = ImagesFolder(self.dir_split, transform=self.transform, loader=self.loader)
+        self.dataset = ImagesFolder(
+            self.dir_split, transform=self.transform, loader=self.loader)
         self.name_to_index = self._load_name_to_index()
 
     def get_dir_data(self):
@@ -32,7 +34,8 @@ class MEDImages(AbstractImagesDataset):
         print('do nothing')
 
     def _load_name_to_index(self):
-        self.name_to_index = {name:index for index, name in enumerate(self.dataset.imgs)}
+        self.name_to_index = {name: index for index,
+                              name in enumerate(self.dataset.imgs)}
         return self.name_to_index
 
     def __getitem__(self, index):
@@ -78,17 +81,18 @@ def default_transform(size):
         transforms.Scale(size),
         transforms.CenterCrop(size),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], # resnet imagnet
+        transforms.Normalize(mean=[0.485, 0.456, 0.406],  # resnet imagnet
                              std=[0.229, 0.224, 0.225])
     ])
     return transform
+
 
 def factory(data_split, opt, transform=None):
     if data_split == 'trainval':
         trainset = factory('train', opt, transform)
         valset = factory('val', opt, transform)
         return MEDTrainval(trainset, valset)
-    elif data_split in ['train', 'val', 'test']:
+    elif data_split in ['train', 'val', 'test', 'train_augment', 'val_augment', "test_augment"]:
         if opt['mode'] == 'img':
             if transform is None:
                 transform = default_transform(opt['size'])

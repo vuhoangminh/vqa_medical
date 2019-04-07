@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str, 
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/med/minhmul_att_train.yaml', type=str, 
+parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_augment.yaml', type=str, 
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
@@ -51,7 +51,7 @@ parser.add_argument('--epochs', type=int,
 # options not in yaml file          
 parser.add_argument('--start_epoch', default=0, type=int,
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--resume', default='ckpt', type=str,
+parser.add_argument('--resume', default='', type=str,
                     help='path to latest checkpoint')
 parser.add_argument('--save_model', default=True, type=utils.str2bool,
                     help='able or disable save model and optim state')

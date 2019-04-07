@@ -59,8 +59,14 @@ def create_questions(df, dataset, dir_interim, dataset_default="val"):
 
 def create_questions_annotations(df, dataset, dir_interim):
     filename = dir_interim + dataset + '_questions_annotations.json'
-    if dataset == "trainval":
+    if dataset in ["trainval", "trainval_augment"]:
         dataset = ["train", "val"]
+    elif dataset == "train_augment":
+        dataset = "train"
+    elif dataset == "val_augment":
+        dataset = "val"        
+    elif dataset == "test_augment":
+        dataset = "test"        
     else:
         dataset = [dataset]
 
