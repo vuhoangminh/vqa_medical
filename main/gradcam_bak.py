@@ -297,20 +297,6 @@ def get_gadcam_vqa(feature_conv, weight_softmax, weight_softmax_b, class_idx):
     return cam
 
 
-def get_gadcam_vqa_wo_att(feature_conv, grad):
-    # generate the class activation maps upsample to 256x256
-    size_upsample = (256, 256)
-    bz, nc, h, w = feature_conv.shape
-    cam = grad.numpy().reshape((nc)).dot(feature_conv.reshape((nc, h*w)))
-    cam = cam.reshape(h, w)
-
-    cam = np.maximum(cam, 0)
-    cam = cv2.resize(cam, size_upsample)
-    cam = cam - np.min(cam)
-    cam = cam / np.max(cam)
-    return cam
-
-
 def get_gadcam_vqa_new(features):
     # generate the class activation maps upsample to 256x256
     target = (features[0] + features[1] + features[2] + features[3])/4
@@ -323,23 +309,6 @@ def get_gadcam_vqa_new(features):
         cam += w * target[:, i]
     cam = cam.reshape((7, 7))
     size_upsample = (256, 256)
-
-    cam = np.maximum(cam, 0)
-    cam = cv2.resize(cam, size_upsample)
-    cam = cam - np.min(cam)
-    cam = cam / np.max(cam)
-    return cam
-
-
-def get_gadcam_vqa_w_att(feature_conv):
-    # generate the class activation maps upsample to 256x256
-    size_upsample = (256, 256)
-    bz, nc, h, w = feature_conv.shape
-    
-    cam = np.ones((nc)).dot(feature_conv.reshape((nc, h*w)))
-    
-    feature_conv.reshape((nc, h*w))
-    cam = cam.reshape(h, w)
 
     cam = np.maximum(cam, 0)
     cam = cv2.resize(cam, size_upsample)
@@ -366,66 +335,43 @@ def get_gradcam_from_vqa_model(visual_features,
         logit, list_v_record = model(visual_features, question_features)
         cam = get_gadcam_vqa_new(list_v_record)
 
-        # model.train()
-        # visual_features = torch.autograd.Variable(
-        #     visual_features.cpu(), requires_grad=True)
-        # question_features = torch.autograd.Variable(
-        #     question_features.cpu())
-        # import vqa.lib.criterions as criterions
-        # criterion = criterions.factory(None, cuda=True)
-        # optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
-        #                              0.0001)
-
-        # model.cpu()
-        # logit, list_v_record = model(visual_features, question_features)
-
-        # h_x = F.softmax(logit, dim=1).data.squeeze()
-        # probs, idx = h_x.sort(0, True)
-        # loss = criterion(logit, idx[0].expand(1))
-        # # probs = probs.cpu().numpy()
-        # # idx = idx.cpu().numpy()
-
-        # # compute gradient and do SGD step
-        # optimizer.zero_grad()
-        # loss.backward()
-
-        # visual_features = visual_features.grad
-
-        # cam = get_gadcam_vqa_w_att(visual_features)
-
     else:
+        # grad_cam = gradcam_utils.GradCam(model=model,
+        #                                  target_layer_names=["linear_v"], use_cuda=True)
 
-        model.train()
-        visual_features = torch.autograd.Variable(
-            visual_features.cpu(), requires_grad=True)
-        question_features = torch.autograd.Variable(
-            question_features.cpu())
-        import vqa.lib.criterions as criterions
-        criterion = criterions.factory(None, cuda=True)
-        optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()),
-                                     0.0001)
+        # target_index = None
+        # mask = grad_cam(visual_features,
+        #                 question_features,
+        #                 target_index)
 
-        model.cpu()
+        # hook the feature extractor
+        features_blobs = []
+
+        def hook_feature(module, input, output):
+            features_blobs.append(output.data.cpu().numpy())
+
+        model._modules.get(finalconv_name).register_forward_hook(hook_feature)
+
+        # model.fusion.linear_v.register_forward_hook(hook_feature)
+
+        # model.fusion.linear_v.register_backward_hook(hook_feature)
+
+        # get the softmax weight
+        params = list(model.parameters())
+        weight_softmax = np.squeeze(params[-2].data.cpu().numpy())
+
+        if "noatt" in vqa_model:
+            classif_w_params = np.squeeze(params[10].data.cpu().numpy())
+            classif_b_params = np.squeeze(params[11].data.cpu().numpy())
+
         logit = model(visual_features, question_features)
-
         h_x = F.softmax(logit, dim=1).data.squeeze()
         probs, idx = h_x.sort(0, True)
+        probs = probs.cpu().numpy()
+        idx = idx.cpu().numpy()
 
-        loss = criterion(logit, idx[0].expand(1))
-        if dataset in ["vqa1", "vqa2"]:
-            loss = loss/10
-            
-        # probs = probs.cpu().numpy()
-        # idx = idx.cpu().numpy()
-
-        # compute gradient and do SGD step
-        optimizer.zero_grad()
-        loss.backward()
-
-        visual_features = visual_features.grad
-
-        cam = get_gadcam_vqa_wo_att(features_blobs_visual[0],
-                                    visual_features)
+        cam = get_gadcam_vqa(features_blobs_visual[0],
+                             classif_w_params, classif_b_params, [idx[0]])
 
     img_name = paths_utils.get_filename_without_extension(path_img)
 
@@ -497,7 +443,6 @@ def initialize(args, dataset="breast"):
 
 
 def process_one_example(args, cnn, model, trainset, path_img, question_str, dataset="breast", is_show_image=False, is_att=False):
-    model.cuda()
     print("\n>> extract visual features...")
     visual_features = process_visual(path_img, cnn, args.vqa_model)
 
@@ -606,6 +551,8 @@ def main(dataset="breast"):
 
     img_dirs = glob.glob(os.path.join(path, ext))
 
+    # args = update_args(
+    #     args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
     args = update_args(
         args, vqa_model="minhmul_noatt_train", dataset=dataset)
 
@@ -726,9 +673,9 @@ def main(dataset="breast"):
 if __name__ == '__main__':
     # dataset = "breast"
     # main(dataset)
-    # dataset = "tools"
-    # main(dataset)
+    dataset = "tools"
+    main(dataset)
     # dataset = "idrid"
     # main(dataset)
-    dataset = "vqa2"
-    main(dataset)
+    # dataset = "vqa2"
+    # main(dataset)
