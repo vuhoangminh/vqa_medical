@@ -17,7 +17,8 @@ class AbstractNoAtt(nn.Module):
         self.num_classes = len(self.vocab_answers)
         # Modules
         self.seq2vec = seq2vec.factory(self.vocab_words, self.opt['seq2vec'])
-        self.linear_classif = nn.Linear(self.opt['fusion']['dim_h'], self.num_classes)
+        self.linear_classif = nn.Linear(
+            self.opt['fusion']['dim_h'], self.num_classes)
 
     def _fusion(self, input_v, input_q):
         raise NotImplementedError
@@ -25,32 +26,16 @@ class AbstractNoAtt(nn.Module):
     def _classif(self, x):
         if 'activation' in self.opt['classif']:
             x = getattr(F, self.opt['classif']['activation'])(x)
-        x = F.dropout(x, p=self.opt['classif']['dropout'], training=self.training)
+        x = F.dropout(x, p=self.opt['classif']
+                      ['dropout'], training=self.training)
         x = self.linear_classif(x)
         return x
 
     def forward(self, input_v, input_q):
-        # print ("input_q size is:", input_q.size())
-        # print ("input_v size is:", input_v.size())
-        # print ("fusion...")
         x_q = self.seq2vec(input_q)
-        # print ("x_q size (seq2vec(input_q)) is:", x_q.size())
         x = self._fusion(input_v, x_q)
-        # print ("x size (after fusion) is:", x.size())
         x = self._classif(x)
-        # print ("x size (after classification) is:", x.size())
         return x
-
-
-# class ElementdivNoAtt(AbstractNoAtt):
-
-#     def __init__(self, opt={}, vocab_words=[], vocab_answers=[]):
-#         super(ElementdivNoAtt, self).__init__(opt, vocab_words, vocab_answers)
-#         self.fusion = fusion.ElementdivFusion(self.opt['fusion'])
-
-#     def _fusion(self, input_v, input_q):
-#         x = self.fusion(input_v, input_q)
-#         return x
 
 
 class MinhmulNoAtt(AbstractNoAtt):
@@ -94,9 +79,9 @@ class ConcatNoAtt(AbstractNoAtt):
 
     def _fusion(self, input_v, input_q):
         x = self.fusion(input_v, input_q)
-        return x		
+        return x
 
-	
+
 class MLBNoAtt(AbstractNoAtt):
 
     def __init__(self, opt={}, vocab_words=[], vocab_answers=[]):
@@ -118,4 +103,3 @@ class MutanNoAtt(AbstractNoAtt):
     def _fusion(self, input_v, input_q):
         x = self.fusion(input_v, input_q)
         return x
-
