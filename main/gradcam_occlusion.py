@@ -7,9 +7,11 @@ import datasets.utils.paths_utils as paths_utils
 import datasets.utils.print_utils as print_utils
 import argparse
 import glob
+import pandas as pd
 import torch
 import cv2
 import numpy as np
+import string
 from torch.nn import functional as F
 from torch.autograd import Variable
 import torchvision.transforms as transforms
@@ -20,6 +22,15 @@ import vqa.models.convnets_idrid as convnets_idrid
 import vqa.models.convnets_breast as convnets_breast
 import vqa.models.convnets_tools as convnets_tools
 from vqa.datasets.vqa_processed import tokenize_mcb
+
+CURRENT_WORKING_DIR = os.path.realpath(__file__)
+PROJECT_DIR = paths_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
+BREAST_PROCESSED_QA_PER_QUESTION_PATH = PROJECT_DIR + \
+    "/data/vqa_breast/raw/raw/" + "breast_qa_per_question.csv"
+IDRID_PROCESSED_QA_PER_QUESTION_PATH = PROJECT_DIR + \
+    "/data/vqa_idrid/raw/raw/" + "idrid_qa_per_question.csv"
+TOOLS_PROCESSED_QA_PER_QUESTION_PATH = PROJECT_DIR + \
+    "/data/vqa_tools/raw/raw/" + "tools_qa_per_question.csv"
 
 
 parser = argparse.ArgumentParser(
@@ -87,7 +98,7 @@ def process_visual(visual_PIL, cnn, vqa_model="minhmul_noatt_train_2048"):
     visual_data[0][2] = visual_tensor[2]
     # print('visual', visual_data.size(), visual_data.mean())
 
-    visual_data = visual_data.cuda(async=True)
+    visual_data = visual_data.cuda()
     visual_input = Variable(visual_data)
 
     visual_features = cnn(visual_input)
@@ -107,7 +118,7 @@ def process_question(args, question_str, trainset):
         else:
             question_data[0][i] = trainset.word_to_wid['UNK']
     if args.cuda:
-        question_data = question_data.cuda(async=True)
+        question_data = question_data.cuda()
     question_input = Variable(question_data)
     # print('question', question_str, question_tokens, question_data)
 
@@ -240,7 +251,7 @@ def get_gradcam_from_image_model(path_img, cnn, dataset, finalconv_name="layer4"
 
     img_tensor = preprocess(img_pil)
     img_variable = Variable(img_tensor.unsqueeze(0))
-    img_variable = img_variable.cuda(async=True)
+    img_variable = img_variable.cuda()
     logit = cnn(img_variable)
 
     paths_utils.make_dir("temp/gradcam/{}/".format(dataset))
@@ -442,15 +453,9 @@ def update_args(args, vqa_model="minhmul_noatt_train_2048", dataset="breast"):
     return args
 
 
-def get_path(dataset="breast"):
-    desktop_path = "/home/minhvu/github/vqa_idrid/"
-    path_dir = desktop_path
-    if dataset == "breast":
-        path = path_dir + "temp/test_breast/"
-    elif dataset == "tools":
-        path = path_dir + "temp/test_tools/"
-    elif dataset == "idrid":
-        path = path_dir + "temp/test_idrid/"
+def get_path(project_dir, dataset="breast"):
+    path_dir = project_dir
+    path = os.path.join(path_dir, "temp/test_{}/".format(dataset))
     return path
 
 
@@ -482,21 +487,17 @@ def save_image(image, mask, occurrence,
 
 
 def get_answer(dataset, image_path, question):
-    if dataset == "idrid" and "IDRiD_01" in image_path and question == "is there soft exudates in the fundus":
-        answer = "no"
-    elif dataset == "idrid" and "IDRiD_05" in image_path and question == "is there soft exudates in the fundus":
-        answer = "yes"
-    elif dataset == "breast" and "A05_idx-35648-23728_ps-4096-4096" in image_path and question == "how many classes are there":
-        answer = "2"
-    elif dataset == "breast" and "A10_idx-32288-43536_ps-4096-4096" in image_path and question == "is normal larger than benign":
-        answer = "yes"
-    elif dataset == "tools" and "v05_011950" in image_path and question == "is grasper in 0_0_32_32 location":
-        answer = "no"
-    elif dataset == "tools" and "v05_011950" in image_path and question == "which tool has pointed tip on the left of the image":
-        answer = "na"
-    elif dataset == "tools" and "v05_011950" in image_path and question == "how many tools are there":
-        answer = "1"        
-    else:
+    QA_PER_QUESTION_PATH = PROJECT_DIR + \
+        "/data/vqa_{}/raw/raw/{}_qa_per_question.csv".format(dataset, dataset)
+    df = pd.read_csv(QA_PER_QUESTION_PATH)
+    image_name = paths_utils.get_filename(image_path)
+    list_file_id = df.index[df['file_id'] == 'IDRiD_01.jpg'].tolist()
+    list_question = df.index[df['question'].str.replace(
+        '[^\w\s]', '').str.lower() == question.translate(string.punctuation)].tolist()
+    try:
+        index = list(set(list_file_id).intersection(list_question))[0]
+        answer = df.at[index, "answer"]
+    except:
         answer = None
     return answer
 
@@ -512,8 +513,8 @@ def process_occlusion(path, dataset="breast"):
         "is there any invasive carcinoma in the image",
         "what is the major class",
         "what is the minor class",
-        "is there benign in the region 64_64_16_16?",
-        "is there invasive carcinoma in the region 80_80_16_16?",
+        "is there benign in the region 64_64_16_16",
+        "is there invasive carcinoma in the region 80_80_16_16",
     ]
 
     LIST_QUESTION_TOOLS = [
@@ -534,8 +535,8 @@ def process_occlusion(path, dataset="breast"):
         "is there hard exudates in the fundus",
         "is hard exudates larger than soft exudates",
         "is haemorrhages smaller than microaneurysms",
-        "is there haemorrhages in the region 64_64_16_16?",
-        "is there microaneurysms in the region 80_80_16_16?",
+        "is there haemorrhages in the region 64_64_16_16",
+        "is there microaneurysms in the region 80_80_16_16",
     ]
 
     if dataset == "breast":
@@ -650,7 +651,7 @@ def main():
     # dataset = "breast"
     # dataset = "tools"
     dataset = "idrid"
-    path = get_path(dataset)
+    path = get_path(PROJECT_DIR, dataset)
     process_occlusion(path, dataset=dataset)
 
 

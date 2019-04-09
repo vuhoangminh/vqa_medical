@@ -24,18 +24,16 @@ DATASETS_VALID_DIR = PROJECT_DIR + \
     "/data/raw/vqa_med/ImageClef-2019-VQA-Med-Validation/Val_images/"
 DATASETS_TEST_DIR = PROJECT_DIR + \
     "/data/raw/vqa_med/VQAMed2019Test/VQAMed2019_Test_Images/"
-DATASETS_TRAIN_TXT = PROJECT_DIR + \
+QA_TRAIN_TXT = PROJECT_DIR + \
     "/data/raw/vqa_med/ImageClef-2019-VQA-Med-Training/All_QA_Pairs_train.txt"
+QA_VALID_TXT = PROJECT_DIR + \
+    "/data/raw/vqa_med/ImageClef-2019-VQA-Med-Validation/All_QA_Pairs_val.txt"
 PREPROCESSED_DIR = PROJECT_DIR + \
     "/data/raw/vqa_med/preprocessed/"
 CLASSIFICATION_DIR = PROJECT_DIR + \
     "/data/raw/vqa_med/preprocessed/classification"
-# PREPROCESSED_TRAIN_DIR = PROJECT_DIR + \
-#     "/data/raw/vqa_med/preprocessed/train/"
-# PREPROCESSED_VALID_DIR = PROJECT_DIR + \
-#     "/data/raw/vqa_med/preprocessed/val/"
-# PREPROCESSED_TEST_DIR = PROJECT_DIR + \
-#     "/data/raw/vqa_med/preprocessed/test/"
+RAW_DIR = PROJECT_DIR + "/data/vqa_med/raw/raw/"
+PROCESSED_QA_PER_QUESTION_PATH = RAW_DIR + "google_keywords.csv"
 
 
 LIST_PLANE = {
@@ -59,15 +57,15 @@ LIST_PLANE = {
 
 LIST_ORGAN = {
     "breast": "breast",
-    "skull": "skull",
-    "face": "face",
-    "spine": "spine",
+    "skull and contents": "skull",
+    "face, sinuses, and neck": "face",
+    "spine and contents": "spine",
     "musculoskeletal": "musculoskeletal",
-    "heart": "heart",
-    "lung": "lung",
+    "heart and great vessels": "heart",
+    "lung, mediastinum, pleura": "lung",
     "gastrointestinal": "gastrointestinal",
     "genitourinary": "genitourinary",
-    "vascular": "vascular",
+    "vascular and lymphatic": "vascular",
 }
 
 LIST_MODALITY = {
@@ -125,7 +123,7 @@ LIST_AUGMENT = [
 ]
 
 
-def get_class_image_model(df, line):
+def get_class_image_model(df, line, is_keyword=False):
     line = line.split("|")
     image, question, answer = line[0], line[1], line[2].split("\n")[0]
 
@@ -133,49 +131,96 @@ def get_class_image_model(df, line):
     organ_keys = list(LIST_ORGAN.keys())
     modality_keys = list(LIST_MODALITY.keys())
 
-    modality, plane, organ,  = "", "", ""
+    modality, plane, organ, abnormal = " ", " ", " ", " "
 
+    is_found = False
     for key in plane_keys:
         if key in answer and "plane" in question:
-            plane = LIST_PLANE[key]
+            is_found = True
+            if is_keyword:
+                plane = key
+            else:
+                plane = LIST_PLANE[key]
     for key in organ_keys:
         if key in answer and ("organ" in question or "part of the body" in question):
-            organ = LIST_ORGAN[key]
+            is_found = True
+            if is_keyword:
+                organ = key
+            else:
+                organ = LIST_ORGAN[key]
     for key in modality_keys:
         if key in answer:
-            modality = LIST_MODALITY[key]
+            is_found = True
+            if is_keyword:
+                modality = key
+            else:
+                modality = LIST_MODALITY[key]
+
+    if not is_found:
+        abnormal = answer
 
     index = df.index[df['image'] == image].tolist()
 
-    if plane != "":
+    if plane != " ":
         if len(index) == 0:
             df = df.append(pd.DataFrame({"image": [image],
-                                         "modality": [""],
-                                         "plane": [plane],
-                                         "organ": [""]}), ignore_index=True)
+                                         "plane": [plane]}),
+                           ignore_index=True)
         else:
             df.at[index[0], 'plane'] = plane
-    if organ != "":
+    if organ != " ":
         if len(index) == 0:
             df = df.append(pd.DataFrame({"image": [image],
-                                         "modality": [""],
-                                         "plane": [""],
-                                         "organ": [organ]}), ignore_index=True)
+                                         "organ": [organ]}),
+                           ignore_index=True)
         else:
             df.at[index[0], 'organ'] = organ
-    if modality != "":
+    if modality != " ":
         if len(index) == 0:
             df = df.append(pd.DataFrame({"image": [image],
-                                         "modality": [modality],
-                                         "plane": [""],
-                                         "organ": [""]}), ignore_index=True)
+                                         "modality": [modality]}),
+                           ignore_index=True)
         else:
             df.at[index[0], 'modality'] = modality
+    if abnormal not in [" ", "yes", "no"]:
+        if len(index) == 0:
+            df = df.append(pd.DataFrame({"image": [image],
+                                         "abnormal": [abnormal]}),
+                           ignore_index=True)
+        else:
+            df.at[index[0], 'abnormal'] = abnormal
+
+    # if plane != "":
+    #     if len(index) == 0:
+    #         df = df.append(pd.DataFrame({"image": [image],
+    #                                      "modality": [""],
+    #                                      "plane": [plane],
+    #                                      "organ": [""]}),
+    #                                      ignore_index=True)
+    #     else:
+    #         df.at[index[0], 'plane'] = plane
+    # if organ != "":
+    #     if len(index) == 0:
+    #         df = df.append(pd.DataFrame({"image": [image],
+    #                                      "modality": [""],
+    #                                      "plane": [""],
+    #                                      "organ": [organ]}), ignore_index=True)
+    #     else:
+    #         df.at[index[0], 'organ'] = organ
+    # if modality != "":
+    #     if len(index) == 0:
+    #         df = df.append(pd.DataFrame({"image": [image],
+    #                                      "modality": [modality],
+    #                                      "plane": [""],
+    #                                      "organ": [""]}), ignore_index=True)
+    #     else:
+    #         df.at[index[0], 'modality'] = modality
+
     return df
 
 
 def move_to_corresponding_label_classification():
-    dataset_dir = DATASETS_TRAIN_TXT
+    dataset_dir = QA_TRAIN_TXT
 
     with open(dataset_dir) as f:
         lines = f.readlines()
@@ -273,13 +318,51 @@ def preprocess_dataset(dataset="train", is_show=False, is_overwrite=False, is_au
                     img_preprocessed.save(out_path)
 
 
-def main(overwrite=False):
-    for dataset in ["train", "val", "test"]:
-        preprocess_dataset(dataset=dataset, is_show=False)
-        preprocess_dataset(dataset=dataset, is_show=False,
-                           is_augment=True, is_overwrite=False)
+def analyze_train_val():
+    dataset_dir = QA_VALID_TXT
+    with open(dataset_dir, encoding='UTF-8') as f:
+        lines = f.readlines()
 
-    move_to_corresponding_label_classification()
+    df = pd.DataFrame(columns=['image', 'modality',
+                               'plane', 'organ', 'abnormal'])
+
+    for index in tqdm(range(len(lines))):
+        line = lines[index]
+        df = get_class_image_model(df, line, is_keyword=True)
+
+    df = df.replace(np.nan, ' ', regex=True)
+    print(df)
+
+    dataset_dir = QA_TRAIN_TXT
+
+    with open(dataset_dir, encoding='UTF-8') as f:
+        lines = f.readlines()
+
+    for index in tqdm(range(len(lines))):
+        line = lines[index]
+        df = get_class_image_model(df, line, is_keyword=True)
+    df = df.replace(np.nan, ' ', regex=True)
+
+    print(df)
+
+    n_group = len(set(zip(df['plane'], df['organ'], df['modality'])))
+    print(n_group)
+
+    df['search'] = df.plane.map(str) + " + " + df.organ.map(str) + \
+        " + " + df.modality.map(str) + " + " + df.abnormal.map(str)
+
+    df.to_csv(PROCESSED_QA_PER_QUESTION_PATH, index=False)
+
+
+def main(overwrite=False):
+    # for dataset in ["train", "val", "test"]:
+    #     preprocess_dataset(dataset=dataset, is_show=False)
+    #     preprocess_dataset(dataset=dataset, is_show=False,
+    #                        is_augment=True, is_overwrite=False)
+
+    # move_to_corresponding_label_classification()
+
+    analyze_train_val()
 
 
 if __name__ == "__main__":
