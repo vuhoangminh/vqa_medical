@@ -6,7 +6,6 @@ import vqa.models as models_vqa
 import datasets.utils.paths_utils as paths_utils
 import datasets.utils.print_utils as print_utils
 import argparse
-from random import shuffle
 import glob
 import pandas as pd
 import torch
@@ -79,7 +78,7 @@ except AttributeError:
     torch._utils._rebuild_tensor_v2 = _rebuild_tensor_v2
 
 
-def process_visual(img, cnn, vqa_model="minhmul_noatt_train_2048"):
+def process_visual(visual_PIL, cnn, vqa_model="minhmul_noatt_train_2048"):
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
         std=[0.229, 0.224, 0.225]
@@ -90,22 +89,13 @@ def process_visual(img, cnn, vqa_model="minhmul_noatt_train_2048"):
         normalize
     ])
 
-    if len(img.shape) == 3:
-        visual_PIL = Image.fromarray(img)
-        visual_tensor = transform(visual_PIL)
-        visual_data = torch.FloatTensor(1, 3, 224, 224)
-        visual_data[0][0] = visual_tensor[0]
-        visual_data[0][1] = visual_tensor[1]
-        visual_data[0][2] = visual_tensor[2]
-    else:
-        visual_data = torch.FloatTensor(img.shape[0], 3, 224, 224)
-        for i in range(img.shape[0]):
-            visual_PIL = Image.fromarray(np.asarray(img[i, :, :, :], np.uint8))
-            visual_tensor = transform(visual_PIL)
-            visual_data[i][0] = visual_tensor[0]
-            visual_data[i][1] = visual_tensor[1]
-            visual_data[i][2] = visual_tensor[2]
-
+    visual_tensor = transform(visual_PIL)
+    visual_data = torch.FloatTensor(1, 3,
+                                    visual_tensor.size(1),
+                                    visual_tensor.size(2))
+    visual_data[0][0] = visual_tensor[0]
+    visual_data[0][1] = visual_tensor[1]
+    visual_data[0][2] = visual_tensor[2]
     # print('visual', visual_data.size(), visual_data.mean())
 
     visual_data = visual_data.cuda()
@@ -136,28 +126,22 @@ def process_question(args, question_str, trainset):
 
 
 def process_answer(answer_var, trainset, model, dataset):
-    list_answer = []
-    for i in range(answer_var.shape[0]):
-        answer_sm = torch.nn.functional.softmax(
-            Variable(answer_var.data[i].cpu()))
+    answer_sm = torch.nn.functional.softmax(Variable(answer_var.data[0].cpu()))
 
-        if dataset == "idrid":
-            topk = 3
-        else:
-            topk = 5
+    if dataset == "idrid":
+        topk = 3
+    else:
+        topk = 5
 
-        max_, aid = answer_sm.topk(topk, 0, True, True)
+    max_, aid = answer_sm.topk(topk, 0, True, True)
 
-        ans = []
-        val = []
-        for i in range(topk):
-            ans.append(trainset.aid_to_ans[aid.data[i]])
-            val.append(max_.data[i])
-        answer = {'ans': ans, 'val': val}
-
-        list_answer.append(answer)
-
-    return list_answer, answer_sm
+    ans = []
+    val = []
+    for i in range(topk):
+        ans.append(trainset.aid_to_ans[aid.data[i]])
+        val.append(max_.data[i])
+    answer = {'ans': ans, 'val': val}
+    return answer, answer_sm
 
 
 def load_dict_torch_031(model, path_ckpt):
@@ -358,49 +342,24 @@ def initialize(args, dataset="breast"):
     return cnn, model, trainset
 
 
-def process_one_batch_of_occlusion(args, cnn, model, trainset, visual_PIL, question_str, list_box, dataset="breast", is_print=True):
-    visual_PIL = visual_PIL.resize((256, 256))
+def process_one_batch_of_occlusion(args, cnn, model, trainset, visual_PIL, question_str, box, dataset="breast", is_print=True):
+    img = np.array(visual_PIL)
 
-    if list_box is not None:
-        img = np.zeros(
-            (len(list_box), visual_PIL.size[0], visual_PIL.size[1], 3))
-        for i in range(len(list_box)):
-            box = list_box[i]
-            im = np.array(visual_PIL)
-            # im = np.moveaxis(im, -1, 0)
-            im[box[0]:box[1], box[2]:box[3], :] = 0
-            img[i, :, :, :] = im
-    else:
-        img = np.zeros((32, visual_PIL.size[0], visual_PIL.size[1], 3))
-        for i in range(32):
-            img[i, :, :, :] = np.array(visual_PIL)
+    if box is not None:
+        img[box[0]:box[1], box[2]:box[3], :] = 0
+    visual_PIL = Image.fromarray(img)
 
     if is_print:
         print("\n>> extract visual features...")
-    visual_features = process_visual(img, cnn, args.vqa_model)
+    visual_features = process_visual(visual_PIL, cnn, args.vqa_model)
 
     if is_print:
         print("\n>> extract question features...")
-    question_features_one = process_question(args, question_str, trainset)
-    question_features = torch.LongTensor(
-        visual_features.shape[0], question_features_one.shape[1])
-    for i in range(visual_features.shape[0]):
-        question_features[i] = question_features_one[0]
-    question_features = question_features.cuda()
-
-    # if visual_features.shape[0] == 1:
-    #     v = torch.FloatTensor(2, 2048, 7, 7)
-    #     q = torch.LongTensor(2, 6)
-
-    #     for i in range(2):
-    #         v[i] = visual_features[0]
-    #         q[i] = q[0]
-    #     visual_features = v.cuda()
-    #     question_features = q.cuda()
+    question_features = process_question(args, question_str, trainset)
 
     if is_print:
         print("\n>> get answers...")
-    answer, _ = process_answer(
+    answer, answer_sm = process_answer(
         model(visual_features, question_features)[0], trainset, model, dataset)
 
     return answer
@@ -444,8 +403,8 @@ def save_image(image, mask, occurrence,
         occurrence.show()
 
     result.save(out_color_path)
-    # mask.save(out_gray_path)
-    # occurrence.save(out_avg_path)
+    mask.save(out_gray_path)
+    occurrence.save(out_avg_path)
 
 
 def get_answer(dataset, image_path, question):
@@ -470,24 +429,17 @@ def process_occlusion(path, dataset="breast"):
 
     LIST_QUESTION_BREAST = [
         "how many classes are there",
-        "is there any benign class in the image",
-        "is there any in situ class in the image",
-        "is there any invasive class in the image",
-        "what is the major class in the image",
-        "what is the minor class in the image",
-        "is benign in 64_64_32_32 location",
-        "is invasive in 96_96_32_32 location",
+        "is there any benign in the image",
+        "is there any in situ carcinoma in the image",
+        "is there any invasive carcinoma in the image",
+        "what is the major class",
+        "what is the minor class",
+        "is there benign in the region 64_64_16_16",
+        "is there invasive carcinoma in the region 80_80_16_16",
     ]
 
     LIST_QUESTION_TOOLS = [
         "how many tools are there",
-        "is scissors in 64_32_32_32 location",
-        "is irrigator in 64_96_32_32 location",
-        "is grasper in 64_96_32_32 location"
-        "is bipolar in 64_96_32_32 location"
-        "is hook in 64_96_32_32 location"
-        "is clipper in 64_96_32_32 location"
-        "is specimenbag in 64_96_32_32 location"
         "is there any grasper in the image",
         "is there any bipolar in the image",
         "is there any hook in the image",
@@ -504,8 +456,8 @@ def process_occlusion(path, dataset="breast"):
         "is there hard exudates in the fundus",
         "is hard exudates larger than soft exudates",
         "is haemorrhages smaller than microaneurysms",
-        "is there haemorrhages in the region 32_32_16_16",
-        "is there microaneurysms in the region 96_96_16_16",
+        "is there haemorrhages in the region 64_64_16_16",
+        "is there microaneurysms in the region 80_80_16_16",
     ]
 
     if dataset == "breast":
@@ -522,11 +474,8 @@ def process_occlusion(path, dataset="breast"):
     # args = update_args(
     #     args, vqa_model="minhmul_att_train", dataset=dataset)
 
-    shuffle(img_dirs)
-    shuffle(list_question)
-    # for (path_img, question_str) in zip(img_dirs, list_question):
-    for path_img in img_dirs:
-        for question_str in list_question:
+    for question_str in list_question:
+        for path_img in img_dirs:
             print(
                 "\n\n=========================================================================")
             print("{} - {}".format(question_str, path_img))
@@ -542,29 +491,29 @@ def process_occlusion(path, dataset="breast"):
                 dst_dir = "temp/occlusion"
                 paths_utils.make_dir(dst_dir)
                 out_color_path = "{}/{}_{}_w_{:0}_s_{:0}_color.jpg".format(dst_dir,
-                                                                        paths_utils.get_filename_without_extension(
-                                                                            path_img),
-                                                                        question_str.replace(
-                                                                            ' ', '_'),
-                                                                        windows_size,
-                                                                        step
-                                                                        )
+                                                                           paths_utils.get_filename_without_extension(
+                                                                               path_img),
+                                                                           question_str.replace(
+                                                                               ' ', '_'),
+                                                                           windows_size,
+                                                                           step
+                                                                           )
                 out_gray_path = "{}/{}_{}_w_{:0}_s_{:0}_gray.jpg".format(dst_dir,
-                                                                        paths_utils.get_filename_without_extension(
-                                                                            path_img),
-                                                                        question_str.replace(
-                                                                            ' ', '_'),
-                                                                        windows_size,
-                                                                        step
-                                                                        )
+                                                                         paths_utils.get_filename_without_extension(
+                                                                             path_img),
+                                                                         question_str.replace(
+                                                                             ' ', '_'),
+                                                                         windows_size,
+                                                                         step
+                                                                         )
                 out_avg_path = "{}/{}_{}_w_{:0}_s_{:0}_avg.jpg".format(dst_dir,
-                                                                    paths_utils.get_filename_without_extension(
-                                                                        path_img),
-                                                                    question_str.replace(
-                                                                        ' ', '_'),
-                                                                    windows_size,
-                                                                    step
-                                                                    )
+                                                                       paths_utils.get_filename_without_extension(
+                                                                           path_img),
+                                                                       question_str.replace(
+                                                                           ' ', '_'),
+                                                                       windows_size,
+                                                                       step
+                                                                       )
 
                 if not os.path.exists(out_color_path):
 
@@ -573,86 +522,64 @@ def process_occlusion(path, dataset="breast"):
                         np.mgrid[0:input_size-windows_size+1:step, 0:input_size-windows_size+1:step].reshape(2, -1).T, dtype=np.int)
 
                     cnn, model, trainset = initialize(args, dataset=dataset)
-                    # cnn, model, trainset = None, None, None
 
                     image_occlusion = np.zeros((input_size, input_size))
                     image_occlusion_times = np.zeros((input_size, input_size))
 
                     ans_without_black_patch = process_one_batch_of_occlusion(args,
-                                                                            cnn,
-                                                                            model,
-                                                                            trainset,
-                                                                            visual_PIL,
-                                                                            question_str,
-                                                                            list_box=None,
-                                                                            dataset=dataset)
+                                                                             cnn,
+                                                                             model,
+                                                                             trainset,
+                                                                             visual_PIL,
+                                                                             question_str,
+                                                                             box=None,
+                                                                             dataset=dataset)
+                    score_without_black_patch = ans_without_black_patch.get("val")[
+                        ans_without_black_patch.get("ans").index(ans_gt)]
 
-                    try:
-                        score_without_black_patch = ans_without_black_patch[0].get("val")[
-                            ans_without_black_patch[0].get("ans").index(ans_gt)]
-                    except:
-                        score_without_black_patch = torch.tensor(0)
-
-                    batch = 32
-                    count = 0
-                    list_box = []
                     for i in range(indices.shape[0]):
                         print_utils.print_tqdm(i, indices.shape[0])
-                        list_box.append([indices[i][0], indices[i][0]+windows_size -
-                                        1, indices[i][1], indices[i][1]+windows_size-1])
-                        count += 1
+                        box = [indices[i][0], indices[i][0]+windows_size -
+                               1, indices[i][1], indices[i][1]+windows_size-1]
+                        # print(box)
+                        ans = process_one_batch_of_occlusion(args,
+                                                             cnn,
+                                                             model,
+                                                             trainset,
+                                                             visual_PIL,
+                                                             question_str,
+                                                             box,
+                                                             dataset=dataset,
+                                                             is_print=False)
+                        try:
+                            score = ans.get("val")[
+                                ans.get("ans").index(ans_gt)]
+                        except:
+                            score = 0
 
-                        # if count == batch or i == indices.shape[0] - 1:
-                        if count == batch:
-                            # print(count)
-                            ans = process_one_batch_of_occlusion(args,
-                                                                cnn,
-                                                                model,
-                                                                trainset,
-                                                                visual_PIL,
-                                                                question_str,
-                                                                list_box,
-                                                                dataset=dataset,
-                                                                is_print=False)
-
-                            for i in range(len(list_box)):
-                                try:
-                                    score = ans[i].get("val")[
-                                        ans[i].get("ans").index(ans_gt)]
-                                except:
-                                    score = 0
-                                box = list_box[i]
-
-                                if score != 0:
-                                    try:
-                                        score_occ = (
-                                            score.item() - score_without_black_patch.item())/score_without_black_patch.item()
-                                    except:
-                                        score_occ = 0
-                                    image_occlusion[box[0]:box[1],
-                                                    box[2]:box[3]] += score_occ
-                                    image_occlusion_times[box[0]:box[1],
-                                                        box[2]:box[3]] += 1
-
-                            count = 0
-                            list_box = []
+                        if score != 0:
+                            score_occ = (
+                                score_without_black_patch.item()-score.item())/score_without_black_patch.item()
+                            image_occlusion[box[0]:box[1],
+                                            box[2]:box[3]] += score_occ
+                            image_occlusion_times[box[0]:box[1],
+                                                  box[2]:box[3]] += 1
 
                     save_image(visual_PIL, image_occlusion, image_occlusion_times,
-                            out_color_path, out_gray_path, out_avg_path,
-                            is_show=False)
+                               out_color_path, out_gray_path, out_avg_path,
+                               is_show=True)
 
 
 def main():
     # dataset = "breast"
     # dataset = "tools"
-
+    dataset = "idrid"
+    path = get_path(PROJECT_DIR, dataset)
+    process_occlusion(path, dataset=dataset)
     # dataset = "breast"
     # path = get_path(PROJECT_DIR, dataset)
     # process_occlusion(path, dataset=dataset)
-    # dataset = "tools"
-    # path = get_path(PROJECT_DIR, dataset)
-    # process_occlusion(path, dataset=dataset)
-    dataset = "idrid"
+    dataset = "tools"
     path = get_path(PROJECT_DIR, dataset)
     process_occlusion(path, dataset=dataset)
 

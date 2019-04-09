@@ -553,17 +553,24 @@ def main(dataset="breast"):
 
     LIST_QUESTION_BREAST = [
         "how many classes are there",
-        "is there any benign in the image",
-        "is there any in situ carcinoma in the image",
-        "is there any invasive carcinoma in the image",
-        "what is the major class",
-        "what is the minor class",
-        "is there benign in the region 64_64_16_16",
-        "is there invasive carcinoma in the region 80_80_16_16",
+        "is there any benign class in the image",
+        "is there any in situ class in the image",
+        "is there any invasive class in the image",
+        "what is the major class in the image",
+        "what is the minor class in the image",
+        "is benign in 64_64_32_32 location",
+        "is invasive in 96_96_32_32 location",
     ]
 
     LIST_QUESTION_TOOLS = [
         "how many tools are there",
+        "is scissors in 64_32_32_32 location",
+        "is irrigator in 64_96_32_32 location",
+        "is grasper in 64_96_32_32 location"
+        "is bipolar in 64_96_32_32 location"
+        "is hook in 64_96_32_32 location"
+        "is clipper in 64_96_32_32 location"
+        "is specimenbag in 64_96_32_32 location"
         "is there any grasper in the image",
         "is there any bipolar in the image",
         "is there any hook in the image",
@@ -580,8 +587,8 @@ def main(dataset="breast"):
         "is there hard exudates in the fundus",
         "is hard exudates larger than soft exudates",
         "is haemorrhages smaller than microaneurysms",
-        "is there haemorrhages in the region 64_64_16_16",
-        "is there microaneurysms in the region 80_80_16_16",
+        "is there haemorrhages in the region 32_32_16_16",
+        "is there microaneurysms in the region 96_96_16_16",
     ]
 
     LIST_QUESTION_VQA2 = [
@@ -607,7 +614,7 @@ def main(dataset="breast"):
     img_dirs = glob.glob(os.path.join(path, ext))
 
     args = update_args(
-        args, vqa_model="minhmul_noatt_train", dataset=dataset)
+        args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
 
     cnn, model, trainset = initialize(args, dataset=dataset)
 
@@ -664,63 +671,63 @@ def main(dataset="breast"):
                                            finalconv_name="linear_classif",
                                            is_att=False)
 
-    # args = update_args(
-    #     args, vqa_model="minhmul_att_train", dataset=dataset)
+    args = update_args(
+        args, vqa_model="minhmul_att_train_2048", dataset=dataset)
 
-    # cnn, model, trainset = initialize(args, dataset=dataset)
+    cnn, model, trainset = initialize(args, dataset=dataset)
 
-    # for question_str in list_question:
-    #     for path_img in img_dirs:
-    #         if dataset in ["vqa1", "vqa2"]:
-    #             if (question_str == "what color is the hydrant" and ("img1" in path_img or "img2" in path_img)) or \
-    #                     (question_str == "why are the men jumping to catch" and ("img3" in path_img or "img4" in path_img)) or \
-    #                     (question_str == "is the water still" and ("img5" in path_img or "img6" in path_img)) or \
-    #                     (question_str == "how many people are in the image" and ("img7" in path_img or "img8" in path_img)):
+    for question_str in list_question:
+        for path_img in img_dirs:
+            if dataset in ["vqa1", "vqa2"]:
+                if (question_str == "what color is the hydrant" and ("img1" in path_img or "img2" in path_img)) or \
+                        (question_str == "why are the men jumping to catch" and ("img3" in path_img or "img4" in path_img)) or \
+                        (question_str == "is the water still" and ("img5" in path_img or "img6" in path_img)) or \
+                        (question_str == "how many people are in the image" and ("img7" in path_img or "img8" in path_img)):
 
-    #                 visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
-    #                                                                                                                 cnn,
-    #                                                                                                                 model,
-    #                                                                                                                 trainset,
-    #                                                                                                                 path_img,
-    #                                                                                                                 question_str,
-    #                                                                                                                 dataset=dataset,
-    #                                                                                                                 is_att=True)
+                    visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
+                                                                                                                    cnn,
+                                                                                                                    model,
+                                                                                                                    trainset,
+                                                                                                                    path_img,
+                                                                                                                    question_str,
+                                                                                                                    dataset=dataset,
+                                                                                                                    is_att=True)
 
-    #                 get_gradcam_from_vqa_model(visual_features,
-    #                                            question_features,
-    #                                            features_blobs_visual,
-    #                                            ans,
-    #                                            path_img,
-    #                                            cnn,
-    #                                            model,
-    #                                            question_str,
-    #                                            dataset,
-    #                                            vqa_model="minhmul_att_train",
-    #                                            finalconv_name="linear_classif",
-    #                                            is_att=True)
+                    get_gradcam_from_vqa_model(visual_features,
+                                               question_features,
+                                               features_blobs_visual,
+                                               ans,
+                                               path_img,
+                                               cnn,
+                                               model,
+                                               question_str,
+                                               dataset,
+                                               vqa_model="minhmul_att_train",
+                                               finalconv_name="linear_classif",
+                                               is_att=True)
 
-    #         else:
-    #             visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
-    #                                                                                                             cnn,
-    #                                                                                                             model,
-    #                                                                                                             trainset,
-    #                                                                                                             path_img,
-    #                                                                                                             question_str,
-    #                                                                                                             dataset=dataset,
-    #                                                                                                             is_att=True)
+            else:
+                visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,
+                                                                                                                cnn,
+                                                                                                                model,
+                                                                                                                trainset,
+                                                                                                                path_img,
+                                                                                                                question_str,
+                                                                                                                dataset=dataset,
+                                                                                                                is_att=True)
 
-    #             get_gradcam_from_vqa_model(visual_features,
-    #                                        question_features,
-    #                                        features_blobs_visual,
-    #                                        ans,
-    #                                        path_img,
-    #                                        cnn,
-    #                                        model,
-    #                                        question_str,
-    #                                        dataset,
-    #                                        vqa_model="minhmul_att_train",
-    #                                        finalconv_name="linear_classif",
-    #                                        is_att=True)
+                get_gradcam_from_vqa_model(visual_features,
+                                           question_features,
+                                           features_blobs_visual,
+                                           ans,
+                                           path_img,
+                                           cnn,
+                                           model,
+                                           question_str,
+                                           dataset,
+                                           vqa_model="minhmul_att_train",
+                                           finalconv_name="linear_classif",
+                                           is_att=True)
 
 
 if __name__ == '__main__':
@@ -728,7 +735,7 @@ if __name__ == '__main__':
     # main(dataset)
     # dataset = "tools"
     # main(dataset)
-    # dataset = "idrid"
-    # main(dataset)
-    dataset = "vqa2"
+    dataset = "idrid"
     main(dataset)
+    # dataset = "vqa2"
+    # main(dataset)
