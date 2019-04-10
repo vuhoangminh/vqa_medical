@@ -335,9 +335,9 @@ def get_gadcam_vqa_w_att(feature_conv):
     # generate the class activation maps upsample to 256x256
     size_upsample = (256, 256)
     bz, nc, h, w = feature_conv.shape
-    
+
     cam = np.ones((nc)).dot(feature_conv.reshape((nc, h*w)))
-    
+
     feature_conv.reshape((nc, h*w))
     cam = cam.reshape(h, w)
 
@@ -414,7 +414,7 @@ def get_gradcam_from_vqa_model(visual_features,
         loss = criterion(logit, idx[0].expand(1))
         if dataset in ["vqa1", "vqa2"]:
             loss = loss/10
-            
+
         # probs = probs.cpu().numpy()
         # idx = idx.cpu().numpy()
 
@@ -582,20 +582,22 @@ def main(dataset="breast"):
 
     LIST_QUESTION_IDRID = [
         "is there haemorrhages in the fundus",
-        "is there microaneurysms in the fundus",
-        "is there soft exudates in the fundus",
-        "is there hard exudates in the fundus",
-        "is hard exudates larger than soft exudates",
-        "is haemorrhages smaller than microaneurysms",
-        "is there haemorrhages in the region 32_32_16_16",
-        "is there microaneurysms in the region 96_96_16_16",
+        # "is there microaneurysms in the fundus",
+        # "is there soft exudates in the fundus",
+        # "is there hard exudates in the fundus",
+        # "is hard exudates larger than soft exudates",
+        # "is haemorrhages smaller than microaneurysms",
+        # "is there haemorrhages in the region 32_32_16_16",
+        # "is there microaneurysms in the region 96_96_16_16",
     ]
 
     LIST_QUESTION_VQA2 = [
-        "what color is the hydrant",
-        "why are the men jumping to catch",
-        "is the water still",
-        "how many people are in the image"
+        # "what color is the hydrant",
+        # "why are the men jumping to catch",
+        # "is the water still",
+        # "how many people are in the image",
+        "what color is the water",
+        "is the person wearing a hat"
     ]
 
     if dataset == "breast":
@@ -615,6 +617,8 @@ def main(dataset="breast"):
 
     args = update_args(
         args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
+    # args = update_args(
+    #     args, vqa_model="minhmul_noatt_train", dataset=dataset)
 
     cnn, model, trainset = initialize(args, dataset=dataset)
 
@@ -673,15 +677,19 @@ def main(dataset="breast"):
 
     args = update_args(
         args, vqa_model="minhmul_att_train_2048", dataset=dataset)
+    # args = update_args(
+    #     args, vqa_model="mlb_att_train", dataset=dataset)
 
     cnn, model, trainset = initialize(args, dataset=dataset)
 
     for question_str in list_question:
         for path_img in img_dirs:
-            if dataset in ["vqa1", "vqa2"]:
+            if dataset in ["vqa", "vqa2"]:
                 if (question_str == "what color is the hydrant" and ("img1" in path_img or "img2" in path_img)) or \
                         (question_str == "why are the men jumping to catch" and ("img3" in path_img or "img4" in path_img)) or \
                         (question_str == "is the water still" and ("img5" in path_img or "img6" in path_img)) or \
+                    (question_str == "what color is the water" and ("img9" in path_img or "img10" in path_img)) or \
+                    (question_str == "is the person wearing a hat" and ("img11" in path_img or "img12" in path_img)) or \
                         (question_str == "how many people are in the image" and ("img7" in path_img or "img8" in path_img)):
 
                     visual_features, question_features, ans, answer_sm, features_blobs_visual = process_one_example(args,

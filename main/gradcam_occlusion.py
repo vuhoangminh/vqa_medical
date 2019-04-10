@@ -22,6 +22,7 @@ import os
 import vqa.models.convnets_idrid as convnets_idrid
 import vqa.models.convnets_breast as convnets_breast
 import vqa.models.convnets_tools as convnets_tools
+import vqa.models.convnets as convnets
 from vqa.datasets.vqa_processed import tokenize_mcb
 
 CURRENT_WORKING_DIR = os.path.realpath(__file__)
@@ -349,6 +350,10 @@ def initialize(args, dataset="breast"):
     elif dataset == "breast":
         cnn = convnets_breast.factory(
             {'arch': "resnet152_breast"}, cuda=True, data_parallel=False)
+    elif dataset == "vqa2":
+        cnn = convnets.factory(
+            {'arch': "fbresnet152"}, cuda=True, data_parallel=False)
+
     cnn = cnn.cuda()
 
     print("\n>> load vqa model...")
@@ -508,29 +513,49 @@ def process_occlusion(path, dataset="breast"):
         "is there microaneurysms in the region 96_96_16_16",
     ]
 
+    LIST_QUESTION_VQA2 = [
+        "what color is the hydrant",
+        "why are the men jumping to catch",
+        "is the water still",
+        "how many people are in the image"
+    ]
+
     if dataset == "breast":
         list_question = LIST_QUESTION_BREAST
     elif dataset == "tools":
         list_question = LIST_QUESTION_TOOLS
     elif dataset == "idrid":
         list_question = LIST_QUESTION_IDRID
+    elif dataset == "vqa2":
+        list_question = LIST_QUESTION_VQA2
 
     img_dirs = glob.glob(os.path.join(path, "*"))
 
-    args = update_args(
-        args, vqa_model="minhmul_att_train_2048", dataset=dataset)
     # args = update_args(
-    #     args, vqa_model="minhmul_att_train", dataset=dataset)
+    #     args, vqa_model="minhmul_att_train_2048", dataset=dataset)
+    args = update_args(
+        args, vqa_model="minhmul_att_train", dataset=dataset)
 
     shuffle(img_dirs)
     shuffle(list_question)
     # for (path_img, question_str) in zip(img_dirs, list_question):
     for path_img in img_dirs:
         for question_str in list_question:
+            if dataset in ["vqa", "vqa2"]:
+                if not ((question_str == "what color is the hydrant" and ("img1" in path_img or "img2" in path_img)) or
+                        (question_str == "why are the men jumping to catch" and ("img3" in path_img or "img4" in path_img)) or
+                        (question_str == "is the water still" and ("img5" in path_img or "img6" in path_img)) or
+                        (question_str == "how many people are in the image" and ("img7" in path_img or "img8" in path_img))):
+                    continue
+
             print(
                 "\n\n=========================================================================")
             print("{} - {}".format(question_str, path_img))
-            ans_gt = get_answer(dataset, path_img, question_str)
+
+            if dataset == "vqa2":
+                ans_gt = "red"
+            else:
+                ans_gt = get_answer(dataset, path_img, question_str)
 
             if ans_gt is None:
                 continue
@@ -542,29 +567,29 @@ def process_occlusion(path, dataset="breast"):
                 dst_dir = "temp/occlusion"
                 paths_utils.make_dir(dst_dir)
                 out_color_path = "{}/{}_{}_w_{:0}_s_{:0}_color.jpg".format(dst_dir,
-                                                                        paths_utils.get_filename_without_extension(
-                                                                            path_img),
-                                                                        question_str.replace(
-                                                                            ' ', '_'),
-                                                                        windows_size,
-                                                                        step
-                                                                        )
+                                                                           paths_utils.get_filename_without_extension(
+                                                                               path_img),
+                                                                           question_str.replace(
+                                                                               ' ', '_'),
+                                                                           windows_size,
+                                                                           step
+                                                                           )
                 out_gray_path = "{}/{}_{}_w_{:0}_s_{:0}_gray.jpg".format(dst_dir,
-                                                                        paths_utils.get_filename_without_extension(
-                                                                            path_img),
-                                                                        question_str.replace(
-                                                                            ' ', '_'),
-                                                                        windows_size,
-                                                                        step
-                                                                        )
+                                                                         paths_utils.get_filename_without_extension(
+                                                                             path_img),
+                                                                         question_str.replace(
+                                                                             ' ', '_'),
+                                                                         windows_size,
+                                                                         step
+                                                                         )
                 out_avg_path = "{}/{}_{}_w_{:0}_s_{:0}_avg.jpg".format(dst_dir,
-                                                                    paths_utils.get_filename_without_extension(
-                                                                        path_img),
-                                                                    question_str.replace(
-                                                                        ' ', '_'),
-                                                                    windows_size,
-                                                                    step
-                                                                    )
+                                                                       paths_utils.get_filename_without_extension(
+                                                                           path_img),
+                                                                       question_str.replace(
+                                                                           ' ', '_'),
+                                                                       windows_size,
+                                                                       step
+                                                                       )
 
                 if not os.path.exists(out_color_path):
 
@@ -579,13 +604,13 @@ def process_occlusion(path, dataset="breast"):
                     image_occlusion_times = np.zeros((input_size, input_size))
 
                     ans_without_black_patch = process_one_batch_of_occlusion(args,
-                                                                            cnn,
-                                                                            model,
-                                                                            trainset,
-                                                                            visual_PIL,
-                                                                            question_str,
-                                                                            list_box=None,
-                                                                            dataset=dataset)
+                                                                             cnn,
+                                                                             model,
+                                                                             trainset,
+                                                                             visual_PIL,
+                                                                             question_str,
+                                                                             list_box=None,
+                                                                             dataset=dataset)
 
                     try:
                         score_without_black_patch = ans_without_black_patch[0].get("val")[
@@ -599,21 +624,21 @@ def process_occlusion(path, dataset="breast"):
                     for i in range(indices.shape[0]):
                         print_utils.print_tqdm(i, indices.shape[0])
                         list_box.append([indices[i][0], indices[i][0]+windows_size -
-                                        1, indices[i][1], indices[i][1]+windows_size-1])
+                                         1, indices[i][1], indices[i][1]+windows_size-1])
                         count += 1
 
                         # if count == batch or i == indices.shape[0] - 1:
                         if count == batch:
                             # print(count)
                             ans = process_one_batch_of_occlusion(args,
-                                                                cnn,
-                                                                model,
-                                                                trainset,
-                                                                visual_PIL,
-                                                                question_str,
-                                                                list_box,
-                                                                dataset=dataset,
-                                                                is_print=False)
+                                                                 cnn,
+                                                                 model,
+                                                                 trainset,
+                                                                 visual_PIL,
+                                                                 question_str,
+                                                                 list_box,
+                                                                 dataset=dataset,
+                                                                 is_print=False)
 
                             for i in range(len(list_box)):
                                 try:
@@ -632,14 +657,14 @@ def process_occlusion(path, dataset="breast"):
                                     image_occlusion[box[0]:box[1],
                                                     box[2]:box[3]] += score_occ
                                     image_occlusion_times[box[0]:box[1],
-                                                        box[2]:box[3]] += 1
+                                                          box[2]:box[3]] += 1
 
                             count = 0
                             list_box = []
 
                     save_image(visual_PIL, image_occlusion, image_occlusion_times,
-                            out_color_path, out_gray_path, out_avg_path,
-                            is_show=False)
+                               out_color_path, out_gray_path, out_avg_path,
+                               is_show=False)
 
 
 def main():
@@ -652,7 +677,11 @@ def main():
     # dataset = "tools"
     # path = get_path(PROJECT_DIR, dataset)
     # process_occlusion(path, dataset=dataset)
-    dataset = "idrid"
+    # dataset = "idrid"
+    # path = get_path(PROJECT_DIR, dataset)
+    # process_occlusion(path, dataset=dataset)
+
+    dataset = "vqa2"
     path = get_path(PROJECT_DIR, dataset)
     process_occlusion(path, dataset=dataset)
 
