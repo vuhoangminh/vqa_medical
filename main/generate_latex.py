@@ -1,3 +1,9 @@
+import glob
+import os
+import shutil
+import datasets.utils.paths_utils as paths_utils
+
+
 LIST_QUESTION_BREAST = [
     "how many classes are there",
     "is there any benign class in the image",
@@ -60,59 +66,99 @@ TOOLS = {
 IDRID = {
     "IDRiD_44": "is there hard exudates in the fundus",
     "IDRiD_46": "is there microaneurysms in the fundus",
+    "IDRiD_47": "is there hard exudates in the fundus",
     "IDRiD_47": "is there microaneurysms in the region 96_96_16_16",
     "IDRiD_51": "is there haemorrhages in the region 32_32_16_16",
+    "IDRiD_52": "is there microaneurysms in the region 96_96_16_16",
     "IDRiD_53": "is there haemorrhages in the fundus",
+    "IDRiD_54": "is there haemorrhages in the fundus",
     "IDRiD_49": "is there microaneurysms in the region 96_96_16_16",
 }
 
 
-file1 = open("temp/myfile.txt", "w")
-
-top = ["\\begin{figure}[t] \n",
-       "\\def\\subfigsize{0.19\\textwidth} \n",
-       "\\def\\subfigverlabelsize{0.17\\textwidth} \n",
-       "\\def\\scalefonesize{0.94} \n",
-       "\\def\\scalefonesizetitle{0.85} \n",
-       "\\centering"]
-
-# bottom = 
-
-for 
-
-#     Question: - Answer:
-#     \includegraphics[width=\subfigsize]{figures/gradcam/IDRiD_01_in.jpg}
-#     \includegraphics[width=\subfigsize]{figures/gradcam/IDRiD_01_cnn.jpg}
-#     \includegraphics[width=\subfigsize]{figures/gradcam/IDRiD_01_att_question_is-there-soft-exudates-in-the-fundus.jpg}
-#     \includegraphics[width=\subfigsize]{figures/gradcam/IDRiD_01_att_question_is-there-soft-exudates-in-the-fundus.jpg}
-#     \includegraphics[width=\subfigsize]{figures/gradcam/IDRiD_01_noatt_question_is-there-soft-exudates-in-the-fundus.jpg}\\
+VQA = {
+    "img1_what_color_is_the_hydrant_red": "what color is the hydrant",
+    "img2_what_color_is_the_hydrant_black_and_yellow": "what color is the hydrant",
+    "img3_why_are_the_men_jumping_to_catch_frisbee": "why are the men jumping to catch",
+    "img4_why_are_the_men_jumping_trick": "why are the men jumping to catch",
+    "img5_is_the_water_still_no": "is the water still",
+    "img6_is_the_water_still_yes": "is the water still",
+    "img7_how_many_people_are_in_the_image_4": "how many people are in the image",
+    "img8_how_many_people_are_in_the_image_1": "how many people are in the image"
+}
 
 
-#     \begin{subfigure}{\subfigsize}
-#         \centering
-#         {\scalefont{\scalefonesizetitle} Input image\\~\\~}
-#     \end{subfigure}
-#     \begin{subfigure}{\subfigsize}
-#         \centering
-#         {\scalefont{\scalefonesizetitle}Grad-CAM of\\image model\\~}
-#     \end{subfigure}
-#     \begin{subfigure}{\subfigsize}
-#         \centering
-#         {\scalefont{\scalefonesizetitle}Grad-CAM of\\QC-MLB\\(attention)}
-#     \end{subfigure}
-#     \begin{subfigure}{\subfigsize}
-#         \centering
-#         {\scalefont{\scalefonesizetitle}Grad-CAM of\\QC-MLB\\(no attention)}
-#     \end{subfigure}
-#     \begin{subfigure}{\subfigsize}
-#         \centering
-#         {\scalefont{\scalefonesizetitle}Occlusion\\ Sensitivity\\~}
-#     \end{subfigure}
-#     \caption{IDRiD
-#     }
-#     \label{fig:gradcam}
-# \end{figure}
+def find_in_dir(name, src_dir):
+    paths = glob.glob(os.path.join(src_dir, "gradcam", "*", "*.jpg")) + \
+        glob.glob(os.path.join(src_dir, "occlusion", "*", "*.jpg"))
+    for path in paths:
+        if name in path:
+            print(name, "found")
+            return path
 
 
-file1.writelines(L)
-file1.close()  # to change file access modes
+def main(dataset="breast"):
+    if dataset == "breast":
+        dataset_dict = BREAST
+    elif dataset == "idrid":
+        dataset_dict = IDRID
+    elif dataset == "tools":
+        dataset_dict = TOOLS
+    elif dataset == "vqa":
+        dataset_dict = VQA
+
+    src_dir = "temp"
+    dst_dir = "temp/sup"
+    paths_utils.make_dir(dst_dir)
+    wrt_dir = "figures/sup"
+
+    str = []
+    for key, value in dataset_dict.items():
+        img_name = key
+        question_str = value
+        question_str = question_str.replace(' ', '-')
+        noatt_name = "{}_noatt_question_{}.jpg".format(img_name,
+                                                       question_str)
+        att_name = "{}_att_question_{}.jpg".format(img_name,
+                                                   question_str)
+        cnn_name = "{}_cnn.jpg".format(img_name)
+        in_name = "{}_in.jpg".format(img_name)
+        occ_name = "{}_{}_w_{:0}_s_{:0}_color.jpg".format(
+            img_name, value.replace(' ', '_'), 32, 2)
+
+        str.append("Question: {} - Answer: {}\n\n".format(value, " "))
+
+        for name in [in_name, cnn_name, att_name, noatt_name, occ_name]:
+            path = find_in_dir(name, src_dir)
+            try:
+                shutil.copy(path, os.path.join(dst_dir, name))
+                str.append(
+                    "\\includegraphics[width=\\subfigsize]{figures/sup/" + name + "}\n")
+            except:
+                str.append(
+                    "\\includegraphics[width=\\subfigsize]{figures/sup/" + in_name + "}\n")
+        str.append("\n")
+
+    file1 = open("temp/myfile.txt", "a+")
+    file1.writelines(str)
+    file1.close()
+
+
+if __name__ == '__main__':
+    # dataset = "idrid"
+    # main(dataset)
+    # file1 = open("temp/myfile.txt", "a+")
+    # file1.writelines(["\n\n\n"])
+    # file1.close()
+    # dataset = "tools"
+    # main(dataset)
+    # file1 = open("temp/myfile.txt", "a+")
+    # file1.writelines(["\n\n\n"])
+    # file1.close()    
+    # dataset = "breast"
+    # main(dataset)
+    # file1 = open("temp/myfile.txt", "a+")
+    # file1.writelines(["\n\n\n"])
+    # file1.close()    
+    dataset = "vqa"
+    main(dataset)
