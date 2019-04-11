@@ -64,17 +64,17 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10):
         if i % print_freq == 0:
             print('Epoch: [{0}][{1}/{2}]\t'
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                #   'Bleu {bleu_batch:.4f} \t'
+                  #   'Bleu {bleu_batch:.4f} \t'
                   'Acc@1 {acc1.val:.3f} ({acc1.avg:.3f})\t'
                   'Acc@2 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
                       epoch, i, len(loader),
-                    #   bleu_batch=bleu_batch*100,
+                      #   bleu_batch=bleu_batch*100,
                       loss=meters['loss'], acc1=meters['acc1'], acc2=meters['acc2']))
 
     logger.log_meters('train', n=epoch)
 
 
-def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
+def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1):
     results = []
     bleu_score = 0
     n_sample = 0
@@ -113,8 +113,15 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
             target_answer = target_answer.data.cpu()
             pred.squeeze_()
             for j in range(batch_size):
-                results.append({'question_id': sample['question_id'][j],
-                                'answer': loader.dataset.aid_to_ans[pred[j]]})
+                if topk == 1:
+                    item = {'question_id': sample['question_id'][j],
+                            'answer': loader.dataset.aid_to_ans[pred[j]]}
+                else:
+                    item = {'question_id': sample['question_id'][j]}
+                    for topi in range(topk):
+                        item['answer{}'.format(
+                            topi+1)] = loader.dataset.aid_to_ans[output.topk(topk)[1][j][topi]]
+                results.append(item)
                 pred_dict[sample['question_id'][j]
                           ] = loader.dataset.aid_to_ans[pred[j]]
                 try:
@@ -149,7 +156,7 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
     return meters['acc1'].avg, results
 
 
-def test(loader, model, logger, epoch=0, print_freq=10):
+def test(loader, model, logger, epoch=0, print_freq=10, topk=1):
     results = []
     testdev_results = []
 
@@ -159,18 +166,28 @@ def test(loader, model, logger, epoch=0, print_freq=10):
     end = time.time()
     for i, sample in enumerate(loader):
         batch_size = sample['visual'].size(0)
-        input_visual = Variable(sample['visual'].cuda(), volatile=True)
-        input_question = Variable(sample['question'].cuda(), volatile=True)
+
+        # input_visual = Variable(sample['visual'].cuda(), volatile=True)
+        # input_question = Variable(sample['question'].cuda(), volatile=True)
+
+        input_visual = sample['visual'].cuda()
+        input_question = sample['question'].cuda()
 
         # compute output
-        output = model(input_visual, input_question)
+        output, hidden = model(input_visual, input_question)
 
         # compute predictions for OpenEnded accuracy
         _, pred = output.data.cpu().max(1)
         pred.squeeze_()
         for j in range(batch_size):
-            item = {'question_id': sample['question_id'][j],
-                    'answer': loader.dataset.aid_to_ans[pred[j]]}
+            if topk == 1:
+                item = {'question_id': sample['question_id'][j],
+                        'answer': loader.dataset.aid_to_ans[pred[j]]}
+            else:
+                item = {'question_id': sample['question_id'][j]}
+                for topi in range(topk):
+                    item['answer{}'.format(
+                        topi+1)] = loader.dataset.aid_to_ans[output.topk(topk)[1][j][topi]]
             results.append(item)
             if sample['is_testdev'][j]:
                 testdev_results.append(item)

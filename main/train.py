@@ -24,7 +24,7 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_augment_h100_g2.yaml', type=str,
+parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_h400_g8.yaml', type=str,
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
@@ -227,7 +227,7 @@ def main():
         if options['vqa']['trainsplit'] == 'train':
             # evaluate on validation set
             acc1, val_results = engine.validate(val_loader, model, criterion,
-                                                exp_logger, epoch, args.print_freq)
+                                                exp_logger, epoch, args.print_freq, topk=5)
             # remember best prec@1 and save checkpoint
             is_best = acc1 > best_acc1
             best_acc1 = max(acc1, best_acc1)
@@ -249,7 +249,7 @@ def main():
                          options['logs']['dir_logs'], options['vqa']['dir'])
         else:
             test_results, testdev_results = engine.test(test_loader, model, exp_logger,
-                                                        epoch, args.print_freq)
+                                                        epoch, args.print_freq, topk=5)
 
             # save checkpoint at every timestep
             save_checkpoint({
