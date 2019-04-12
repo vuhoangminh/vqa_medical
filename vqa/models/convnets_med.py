@@ -61,8 +61,8 @@ def factory(opt, cuda=True, data_parallel=True):
         x = self.maxpool(x)
         x = self.layer1(x)
         x = self.layer2(x)
-        x = self.layer3(x)
-        x = self.layer4(x)
+        x3 = self.layer3(x)
+        x = self.layer4(x3)
 
         if 'pooling' in opt and opt['pooling']:
             x = self.avgpool(x)
@@ -72,7 +72,7 @@ def factory(opt, cuda=True, data_parallel=True):
             x = x.view(x.size(0), -1)
             x = x.div(div)
 
-        return x
+        return x, x3
 
     def forward_resnext(self, x):
         x = self.features(x)
