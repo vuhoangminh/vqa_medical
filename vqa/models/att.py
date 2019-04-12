@@ -182,20 +182,24 @@ class BilinearAtt(AbstractAtt):
         self.linear_q_fusion = nn.Linear(self.opt['dim_q'],
                                          self.opt['fusion']['dim_h']
                                          * self.opt['attention']['nb_glimpses'])
-        self.linear_classif = nn.Linear(self.opt['fusion']['dim_h']
-                                        * self.opt['attention']['nb_glimpses'],
+        self.linear_classif = nn.Linear(self.opt['attention']['dim_mm'],
                                         self.num_classes)
-        self.bilinear = nn.Bilinear(self.opt['attention']['dim_h'],
-                                    self.opt['attention']['dim_h'],
-                                    self.opt['attention']['dim_h'])
+
+        self.bilinear = nn.Bilinear(self.opt['attention']['dim_v']
+                                    * self.opt['attention']['nb_glimpses'],
+                                    self.opt['attention']['dim_q'],
+                                    self.opt['attention']['dim_mm'])
 
     def _fusion_att(self, x_v, x_q):
-        x_q = torch.pow(x_q, 2)
-        x_att = self.bilinear(x_v, x_q)
+        x_att = torch.pow(x_q, 2)
+        x_att = torch.mul(x_v, x_att)
         return x_att
 
     def _fusion_classif(self, x_v, x_q):
         x_q = torch.pow(x_q, 2)
+        x_q = x_q.view(x_q.shape[0], int(
+            x_q.shape[1]/self.opt['attention']['nb_glimpses']), -1)
+        x_q = torch.sum(x_q, dim=2)
         x_mm = self.bilinear(x_v, x_q)
         return x_mm
 
