@@ -26,6 +26,21 @@ class AbstractAtt(nn.Module):
                                       self.opt['attention']['dim_q'])
         self.conv_att = nn.Conv2d(self.opt['attention']['dim_mm'],
                                   self.opt['attention']['nb_glimpses'], 1, 1)
+        # Modules for batch norm
+        self.batchnorm_conv_v_att = nn.BatchNorm2d(self.opt['attention']['dim_v'])                                  
+        self.batchnorm_linear_q_att = nn.BatchNorm1d(
+            self.opt['attention']['dim_q'])                                  
+        self.batchnorm_conv_att = nn.BatchNorm2d(
+            self.opt['attention']['nb_glimpses'])
+        self.batchnorm_fusion_att = nn.BatchNorm1d(
+            self.opt['attention']['dim_mm'])
+        self.batchnorm_list_linear_v_fusion = nn.BatchNorm1d(
+            self.opt['attention']['dim_mm'])
+        self.batchnorm_list_linear_q_fusion = nn.BatchNorm1d(
+            self.opt['attention']['dim_mm']*self.opt['attention']['nb_glimpses'])            
+        self.batchnorm_fusion_classif = nn.BatchNorm1d(
+            self.opt['attention']['dim_mm']*self.opt['attention']['nb_glimpses'])
+
         # Modules for classification
         self.list_linear_v_fusion = None
         self.linear_q_fusion = None
@@ -49,6 +64,7 @@ class AbstractAtt(nn.Module):
                         p=self.opt['attention']['dropout_v'],
                         training=self.training)
         x_v = self.conv_v_att(x_v)
+        # x_v = self.batchnorm_conv_v_att(x_v)
         if 'activation_v' in self.opt['attention']:
             x_v = getattr(F, self.opt['attention']['activation_v'])(x_v)
         x_v = x_v.view(batch_size,
@@ -60,6 +76,7 @@ class AbstractAtt(nn.Module):
         x_q = F.dropout(x_q_vec, p=self.opt['attention']['dropout_q'],
                         training=self.training)
         x_q = self.linear_q_att(x_q)
+        # x_q = self.batchnorm_linear_q_att(x_q)
         if 'activation_q' in self.opt['attention']:
             x_q = getattr(F, self.opt['attention']['activation_q'])(x_q)
         x_q = x_q.view(batch_size,
@@ -71,7 +88,9 @@ class AbstractAtt(nn.Module):
 
         # First multimodal fusion
         x_att = self._fusion_att(x_v, x_q)
-
+        x_att = x_att.transpose(1, 2)
+        # x_att = self.batchnorm_fusion_att(x_att)
+        x_att = x_att.transpose(1, 2)
         if 'activation_mm' in self.opt['attention']:
             x_att = getattr(F, self.opt['attention']['activation_mm'])(x_att)
 
@@ -86,6 +105,7 @@ class AbstractAtt(nn.Module):
                            self.opt['attention']['dim_mm'])
         x_att = x_att.transpose(2, 3).transpose(1, 2)
         x_att = self.conv_att(x_att)
+        # x_att = self.batchnorm_conv_att(x_att)
         x_att = x_att.view(batch_size,
                            self.opt['attention']['nb_glimpses'],
                            width * height)
@@ -128,6 +148,7 @@ class AbstractAtt(nn.Module):
                             p=self.opt['fusion']['dropout_v'],
                             training=self.training)
             x_v = self.list_linear_v_fusion[glimpse_id](x_v)
+            # x_v = self.batchnorm_list_linear_v_fusion(x_v)
             if 'activation_v' in self.opt['fusion']:
                 x_v = getattr(F, self.opt['fusion']['activation_v'])(x_v)
             list_v.append(x_v)
@@ -138,11 +159,13 @@ class AbstractAtt(nn.Module):
                         p=self.opt['fusion']['dropout_q'],
                         training=self.training)
         x_q = self.linear_q_fusion(x_q)
+        # x_q = self.batchnorm_list_linear_q_fusion(x_q)
         if 'activation_q' in self.opt['fusion']:
             x_q = getattr(F, self.opt['fusion']['activation_q'])(x_q)
 
         # Second multimodal fusion
         x = self._fusion_classif(x_v, x_q)
+        # x = self.batchnorm_fusion_classif(x)
         return x
 
     def _classif(self, x):
