@@ -20,14 +20,15 @@ class AbstractVQA(AbstractVQADataset):
     def __init__(self, data_split, opt, dataset_img=None):
         super(AbstractVQA, self).__init__(data_split, opt, dataset_img)
 
-        if 'train' not in self.data_split: # means self.data_split is 'val' or 'test'
+        if 'train' not in self.data_split:  # means self.data_split is 'val' or 'test'
             self.opt['samplingans'] = False
         assert 'samplingans' in self.opt, \
                "opt['vqa'] does not have 'samplingans' "\
                "entry. Set it to True or False."
-  
+
         if self.data_split == 'test':
-            path_testdevset = os.path.join(self.subdir_processed, 'testdevset.pickle')
+            path_testdevset = os.path.join(
+                self.subdir_processed, 'testdevset.pickle')
             with open(path_testdevset, 'rb') as handle:
                 self.testdevset_vqa = pickle.load(handle)
             self.is_qid_testdev = {}
@@ -53,7 +54,7 @@ class AbstractVQA(AbstractVQADataset):
         if self.dataset_img is not None:
             item_img = self.dataset_img.get_by_name(item_vqa['image_name'])
             item['visual'] = item_img['visual']
-        
+
         # Process Question (word token)
         item['question_id'] = item_vqa['question_id']
         item['question'] = torch.LongTensor(item_vqa['question_wids'])
@@ -64,11 +65,12 @@ class AbstractVQA(AbstractVQADataset):
             else:
                 item['is_testdev'] = False
         else:
-        ## Process Answer if exists
+            # Process Answer if exists
             if self.opt['samplingans']:
                 proba = item_vqa['answers_count']
                 proba = proba / np.sum(proba)
-                item['answer'] = int(np.random.choice(item_vqa['answers_aid'], p=proba))
+                item['answer'] = int(np.random.choice(
+                    item_vqa['answers_aid'], p=proba))
             else:
                 item['answer'] = item_vqa['answer_aid']
 
@@ -88,9 +90,9 @@ class AbstractVQA(AbstractVQADataset):
 
     def data_loader(self, batch_size=10, num_workers=4, shuffle=False):
         return DataLoader(self,
-            batch_size=batch_size, shuffle=shuffle,
-            num_workers=num_workers, pin_memory=True)
- 
+                          batch_size=batch_size, shuffle=shuffle,
+                          num_workers=num_workers, pin_memory=True)
+
     def split_name(self, testdev=False):
         if testdev:
             return 'test-dev2015'
@@ -102,10 +104,10 @@ class AbstractVQA(AbstractVQADataset):
             return 'test-dev2015'
         else:
             assert False, 'Wrong data_split: {}'.format(self.data_split)
- 
+
     def subdir_processed(self):
         subdir = 'nans,' + str(self.opt['nans']) \
-              + '_maxlength,' + str(self.opt['maxlength']) \
+            + '_maxlength,' + str(self.opt['maxlength']) \
               + '_minwcount,' + str(self.opt['minwcount']) \
               + '_nlp,' + self.opt['nlp'] \
               + '_pad,' + self.opt['pad'] \
@@ -124,16 +126,26 @@ class VQA(AbstractVQA):
         dir_ann = os.path.join(self.dir_raw, 'annotations')
         os.system('mkdir -p '+dir_zip)
         os.system('mkdir -p '+dir_ann)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/Questions_Train_mscoco.zip -P '+dir_zip)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/Questions_Val_mscoco.zip -P '+dir_zip)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/Questions_Test_mscoco.zip -P '+dir_zip)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/Annotations_Train_mscoco.zip -P '+dir_zip)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/Annotations_Val_mscoco.zip -P '+dir_zip)
-        os.system('unzip '+os.path.join(dir_zip, 'Questions_Train_mscoco.zip')+' -d '+dir_ann)
-        os.system('unzip '+os.path.join(dir_zip, 'Questions_Val_mscoco.zip')+' -d '+dir_ann)
-        os.system('unzip '+os.path.join(dir_zip, 'Questions_Test_mscoco.zip')+' -d '+dir_ann)
-        os.system('unzip '+os.path.join(dir_zip, 'Annotations_Train_mscoco.zip')+' -d '+dir_ann)
-        os.system('unzip '+os.path.join(dir_zip, 'Annotations_Val_mscoco.zip')+' -d '+dir_ann)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/Questions_Train_mscoco.zip -P '+dir_zip)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/Questions_Val_mscoco.zip -P '+dir_zip)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/Questions_Test_mscoco.zip -P '+dir_zip)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/Annotations_Train_mscoco.zip -P '+dir_zip)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/Annotations_Val_mscoco.zip -P '+dir_zip)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'Questions_Train_mscoco.zip')+' -d '+dir_ann)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'Questions_Val_mscoco.zip')+' -d '+dir_ann)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'Questions_Test_mscoco.zip')+' -d '+dir_ann)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'Annotations_Train_mscoco.zip')+' -d '+dir_ann)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'Annotations_Val_mscoco.zip')+' -d '+dir_ann)
 
     def _interim(self):
         vqa_interim(self.opt['dir'])
@@ -152,28 +164,38 @@ class VQA2(AbstractVQA):
         dir_ann = os.path.join(self.dir_raw, 'annotations')
         os.system('mkdir -p '+dir_zip)
         os.system('mkdir -p '+dir_ann)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/v2_Questions_Train_mscoco.zip -P '+dir_zip)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/v2_Questions_Val_mscoco.zip -P '+dir_zip)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/v2_Questions_Test_mscoco.zip -P '+dir_zip)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/v2_Annotations_Train_mscoco.zip -P '+dir_zip)
-        os.system('wget http://visualqa.org/data/mscoco/vqa/v2_Annotations_Val_mscoco.zip -P '+dir_zip)
-        os.system('unzip '+os.path.join(dir_zip, 'v2_Questions_Train_mscoco.zip')+' -d '+dir_ann)
-        os.system('unzip '+os.path.join(dir_zip, 'v2_Questions_Val_mscoco.zip')+' -d '+dir_ann)
-        os.system('unzip '+os.path.join(dir_zip, 'v2_Questions_Test_mscoco.zip')+' -d '+dir_ann)
-        os.system('unzip '+os.path.join(dir_zip, 'v2_Annotations_Train_mscoco.zip')+' -d '+dir_ann)
-        os.system('unzip '+os.path.join(dir_zip, 'v2_Annotations_Val_mscoco.zip')+' -d '+dir_ann)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/v2_Questions_Train_mscoco.zip -P '+dir_zip)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/v2_Questions_Val_mscoco.zip -P '+dir_zip)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/v2_Questions_Test_mscoco.zip -P '+dir_zip)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/v2_Annotations_Train_mscoco.zip -P '+dir_zip)
+        os.system(
+            'wget http://visualqa.org/data/mscoco/vqa/v2_Annotations_Val_mscoco.zip -P '+dir_zip)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'v2_Questions_Train_mscoco.zip')+' -d '+dir_ann)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'v2_Questions_Val_mscoco.zip')+' -d '+dir_ann)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'v2_Questions_Test_mscoco.zip')+' -d '+dir_ann)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'v2_Annotations_Train_mscoco.zip')+' -d '+dir_ann)
+        os.system('unzip '+os.path.join(dir_zip,
+                                        'v2_Annotations_Val_mscoco.zip')+' -d '+dir_ann)
         os.system('mv '+os.path.join(dir_ann, 'v2_mscoco_train2014_annotations.json')+' '
-                       +os.path.join(dir_ann, 'mscoco_train2014_annotations.json'))
+                       + os.path.join(dir_ann, 'mscoco_train2014_annotations.json'))
         os.system('mv '+os.path.join(dir_ann, 'v2_mscoco_val2014_annotations.json')+' '
-                       +os.path.join(dir_ann, 'mscoco_val2014_annotations.json'))
+                       + os.path.join(dir_ann, 'mscoco_val2014_annotations.json'))
         os.system('mv '+os.path.join(dir_ann, 'v2_OpenEnded_mscoco_train2014_questions.json')+' '
-                       +os.path.join(dir_ann, 'OpenEnded_mscoco_train2014_questions.json'))
+                       + os.path.join(dir_ann, 'OpenEnded_mscoco_train2014_questions.json'))
         os.system('mv '+os.path.join(dir_ann, 'v2_OpenEnded_mscoco_val2014_questions.json')+' '
-                       +os.path.join(dir_ann, 'OpenEnded_mscoco_val2014_questions.json'))
+                       + os.path.join(dir_ann, 'OpenEnded_mscoco_val2014_questions.json'))
         os.system('mv '+os.path.join(dir_ann, 'v2_OpenEnded_mscoco_test2015_questions.json')+' '
-                       +os.path.join(dir_ann, 'OpenEnded_mscoco_test2015_questions.json'))
+                       + os.path.join(dir_ann, 'OpenEnded_mscoco_test2015_questions.json'))
         os.system('mv '+os.path.join(dir_ann, 'v2_OpenEnded_mscoco_test-dev2015_questions.json')+' '
-                       +os.path.join(dir_ann, 'OpenEnded_mscoco_test-dev2015_questions.json'))
+                       + os.path.join(dir_ann, 'OpenEnded_mscoco_test-dev2015_questions.json'))
 
     def _interim(self):
         vqa2_interim(self.opt['dir'])
@@ -213,15 +235,14 @@ class VQAVisualGenome(data.Dataset):
         self.dataset_vgenome.dataset = data_vg_new
         print('-> {} items left in visual genome'.format(len(self.dataset_vgenome)))
         print('-> {} items total in vqa+vg'.format(len(self)))
-                
 
     def __getitem__(self, index):
         if index < len(self.dataset_vqa):
             item = self.dataset_vqa[index]
-            #print('vqa')
+            # print('vqa')
         else:
             item = self.dataset_vgenome[index - len(self.dataset_vqa)]
-            #print('vg')
+            # print('vg')
         #import ipdb; ipdb.set_trace()
         return item
 
@@ -239,8 +260,8 @@ class VQAVisualGenome(data.Dataset):
 
     def data_loader(self, batch_size=10, num_workers=4, shuffle=False):
         return DataLoader(self,
-            batch_size=batch_size, shuffle=shuffle,
-            num_workers=num_workers, pin_memory=True)
+                          batch_size=batch_size, shuffle=shuffle,
+                          num_workers=num_workers, pin_memory=True)
 
     def split_name(self, testdev=False):
         return self.dataset_vqa.split_name(testdev=testdev)
@@ -252,9 +273,9 @@ def factory(data_split, opt, opt_coco=None, opt_vgenome=None):
     if opt_coco is not None:
         dataset_img = coco.factory(data_split, opt_coco)
 
-    if opt['dataset'] == 'VQA' and '2' not in opt['dir']: # sanity check
+    if opt['dataset'] == 'VQA' and '2' not in opt['dir']:  # sanity check
         dataset_vqa = VQA(data_split, opt, dataset_img)
-    elif opt['dataset'] == 'VQA2' and '2' in opt['dir']: # sanity check
+    elif opt['dataset'] == 'VQA2' and '2' in opt['dir']:  # sanity check
         dataset_vqa = VQA2(data_split, opt, dataset_img)
     else:
         raise ValueError
@@ -264,4 +285,3 @@ def factory(data_split, opt, opt_coco=None, opt_vgenome=None):
         return VQAVisualGenome(dataset_vqa, dataset_vgenome)
     else:
         return dataset_vqa
-
