@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/med/minhmul_att_train_imagenet_h200_g8
+    dir_logs: logs/med/minhmul_att_train_imagenet_h400_g8
 vqa:
     dataset: VQA
     dir: data/vqa_med
@@ -27,21 +27,21 @@ model:
         fixed_emb: False
     attention:
         nb_glimpses: 8
-        dim_h: 200
+        dim_h: 400
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
-        activation_v: tanh
-        activation_q: tanh
-        activation_mm: tanh
+        activation_v: relu
+        activation_q: relu
+        activation_mm: relu
     fusion:
-        dim_h: 200
+        dim_h: 400
         dropout_v: 0.5
         dropout_q: 0.5
-        activation_v: tanh
-        activation_q: tanh
+        activation_v: relu
+        activation_q: relu
     classif:
-        activation: tanh
+        activation: relu
         dropout: 0.5
 optim:
     lr: 0.0001
