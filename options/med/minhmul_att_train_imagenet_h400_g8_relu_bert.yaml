@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/med/minhmul_att_train_imagenet_h200_g8_relu_bert
+    dir_logs: logs/med/minhmul_att_train_imagenet_h400_g8_relu_bert
 vqa:
     dataset: VQA
     dir: data/vqa_med
@@ -23,11 +23,11 @@ model:
         arch: bert
         dir_st: data/bert
         type: BayesianUniSkip
-        dropout: 0.25
+        dropout: 0.5
         fixed_emb: False
     attention:
         nb_glimpses: 8
-        dim_h: 200
+        dim_h: 400
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
@@ -35,7 +35,7 @@ model:
         activation_q: relu
         activation_mm: relu
     fusion:
-        dim_h: 200
+        dim_h: 400
         dropout_v: 0.5
         dropout_q: 0.5
         activation_v: relu

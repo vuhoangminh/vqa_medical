@@ -30,7 +30,7 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
         else:
             # questions = sample["item_vqa"]["question_raw"]
             questions = sample["question_raw"]
-            input_question = torch.zeros([sample['visual'].shape[0],768])
+            input_question = torch.zeros([sample['visual'].shape[0],3072])
             for j in range(sample['visual'].shape[0]):
                 input_question[j] = torch.tensor(dict[questions[j]])
             input_question = Variable(input_question)
@@ -108,7 +108,7 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
             else:
                 questions = sample["question_raw"]
                 # questions = sample["item_vqa"]["question"]
-                input_question = torch.zeros([sample['visual'].shape[0],768])
+                input_question = torch.zeros([sample['visual'].shape[0],3072])
                 for j in range(sample['visual'].shape[0]):
                     input_question[j] = torch.tensor(dict[questions[j]])
                 input_question = input_question.cuda()

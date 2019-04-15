@@ -30,13 +30,8 @@ from torch.utils.data import TensorDataset, DataLoader, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 
 
-<<<<<<< HEAD
 from vqa.external.bert.pytorch_pretrained_bert.tokenization import BertTokenizer
 from vqa.external.bert.pytorch_pretrained_bert.modeling import BertModel
-=======
-from external.bert.pytorch_pretrained_bert.tokenization import BertTokenizer
-from external.bert.pytorch_pretrained_bert.modeling import BertModel
->>>>>>> c4eaabf4ce01e2943b28a334a24c16712e1dfc6a
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -244,12 +239,8 @@ def sen2vec(questions, bert_model="bert-base-multilingual-uncased", layers="-1,-
                 v_q += all_encoder_layers[-i][:, 0, :]
         v_q /= 4
 
-<<<<<<< HEAD
         # print(v_q)
     return v_q
-=======
-        print(v_q)
->>>>>>> c4eaabf4ce01e2943b28a334a24c16712e1dfc6a
 
 
 if __name__ == "__main__":

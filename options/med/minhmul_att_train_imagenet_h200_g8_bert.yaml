@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/med/minhmul_att_train_imagenet_h200_g8_relu_bert
+    dir_logs: logs/med/minhmul_att_train_imagenet_h200_g8_bert
 vqa:
     dataset: VQA
     dir: data/vqa_med
@@ -31,17 +31,17 @@ model:
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
-        activation_v: relu
-        activation_q: relu
-        activation_mm: relu
+        activation_v: tanh
+        activation_q: tanh
+        activation_mm: tanh
     fusion:
         dim_h: 200
         dropout_v: 0.5
         dropout_q: 0.5
-        activation_v: relu
-        activation_q: relu
+        activation_v: tanh
+        activation_q: tanh
     classif:
-        activation: relu
+        activation: tanh
         dropout: 0.5
 optim:
     lr: 0.0001
