@@ -139,10 +139,10 @@ def main():
     path_file = os.path.join(dir_extract, args.data_split + 'set')
     os.system('mkdir -p ' + dir_extract)
 
-    if args.dataset == "med":
-        extract_med(data_loader, model, path_file, args.mode)
-    else:
-        extract(data_loader, model, path_file, args.mode)
+    # if args.dataset == "med":
+    #     extract_med(data_loader, model, path_file, args.mode)
+    # else:
+    extract(data_loader, model, path_file, args.mode)
 
 
 def extract(data_loader, model, path_file, mode):
@@ -151,7 +151,7 @@ def extract(data_loader, model, path_file, mode):
     hdf5_file = h5py.File(path_hdf5, 'w')
 
     # estimate output shapes
-    output = model(Variable(torch.ones(1, 3, args.size, args.size)))
+    output, hidden = model(Variable(torch.ones(1, 3, args.size, args.size)))
 
     nb_images = len(data_loader.dataset)
     if mode == 'both' or mode == 'att':
@@ -175,7 +175,7 @@ def extract(data_loader, model, path_file, mode):
     idx = 0
     for i, input in enumerate(data_loader):
         input_var = Variable(input['visual'], volatile=True)
-        output_att = model(input_var)
+        output_att, _ = model(input_var)
 
         nb_regions = output_att.size(2) * output_att.size(3)
         output_noatt = output_att.sum(3).sum(2).div(nb_regions).view(-1, 2048)

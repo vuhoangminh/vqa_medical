@@ -13,6 +13,7 @@ def process_lengths(input):
     lengths = list(max_length - input.data.eq(0).sum(1).squeeze())
     return lengths
 
+
 def select_last(x, lengths):
     batch_size = x.size(0)
     seq_length = x.size(1)
@@ -23,6 +24,7 @@ def select_last(x, lengths):
     x = x.mul(mask)
     x = x.sum(1).view(batch_size, x.size(2))
     return x
+
 
 class LSTM(nn.Module):
 
@@ -35,11 +37,12 @@ class LSTM(nn.Module):
         self.embedding = nn.Embedding(num_embeddings=len(self.vocab)+1,
                                       embedding_dim=emb_size,
                                       padding_idx=0)
-        self.rnn = nn.LSTM(input_size=emb_size, hidden_size=hidden_size, num_layers=num_layers)
+        self.rnn = nn.LSTM(input_size=emb_size,
+                           hidden_size=hidden_size, num_layers=num_layers)
 
     def forward(self, input):
         lengths = process_lengths(input)
-        x = self.embedding(input) # seq2seq
+        x = self.embedding(input)  # seq2seq
         output, hn = self.rnn(x)
         output = select_last(output, lengths)
         return output
@@ -55,12 +58,14 @@ class TwoLSTM(nn.Module):
         self.embedding = nn.Embedding(num_embeddings=len(self.vocab)+1,
                                       embedding_dim=emb_size,
                                       padding_idx=0)
-        self.rnn_0 = nn.LSTM(input_size=emb_size, hidden_size=hidden_size, num_layers=1)
-        self.rnn_1 = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size, num_layers=1)
+        self.rnn_0 = nn.LSTM(input_size=emb_size,
+                             hidden_size=hidden_size, num_layers=1)
+        self.rnn_1 = nn.LSTM(input_size=hidden_size,
+                             hidden_size=hidden_size, num_layers=1)
 
     def forward(self, input):
         lengths = process_lengths(input)
-        x = self.embedding(input) # seq2seq
+        x = self.embedding(input)  # seq2seq
         x = getattr(F, 'tanh')(x)
         x_0, hn = self.rnn_0(x)
         vec_0 = select_last(x_0, lengths)
@@ -69,12 +74,12 @@ class TwoLSTM(nn.Module):
         # print(x_1.size())
         x_1, hn = self.rnn_1(x_0)
         vec_1 = select_last(x_1, lengths)
-        
+
         vec_0 = F.dropout(vec_0, p=0.3, training=self.training)
         vec_1 = F.dropout(vec_1, p=0.3, training=self.training)
         output = torch.cat((vec_0, vec_1), 1)
         return output
-        
+
 
 def factory(vocab_words, opt):
     if opt['arch'] == 'skipthoughts':
@@ -103,8 +108,8 @@ if __name__ == '__main__':
     lstm = TwoLSTM(vocab, 300, 1024)
 
     input = Variable(torch.LongTensor([
-        [1,2,3,4,5,0,0],
-        [6,1,2,3,3,4,5],
-        [6,1,2,3,3,4,5]
+        [1, 2, 3, 4, 5, 0, 0],
+        [6, 1, 2, 3, 3, 4, 5],
+        [6, 1, 2, 3, 3, 4, 5]
     ]))
     output = lstm(input)

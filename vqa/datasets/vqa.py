@@ -58,6 +58,7 @@ class AbstractVQA(AbstractVQADataset):
         # Process Question (word token)
         item['question_id'] = item_vqa['question_id']
         item['question'] = torch.LongTensor(item_vqa['question_wids'])
+        item['question_raw'] = item_vqa["question"]
 
         if self.data_split == 'test':
             if item['question_id'] in self.is_qid_testdev:

@@ -37,13 +37,17 @@ from .file_utils import cached_path
 logger = logging.getLogger(__name__)
 
 PRETRAINED_MODEL_ARCHIVE_MAP = {
-    'bert-base-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased.tar.gz",
-    'bert-large-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased.tar.gz",
-    'bert-base-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased.tar.gz",
-    'bert-large-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased.tar.gz",
-    'bert-base-multilingual-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased.tar.gz",
-    'bert-base-multilingual-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased.tar.gz",
-    'bert-base-chinese': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese.tar.gz",
+    'bert-base-uncased': "data/bert/bert-base-uncased.tar.gz",
+    'bert-large-uncased': "data/bert/bert-large-uncased.tar.gz",
+    'bert-base-cased': "data/bert/bert-base-cased.tar.gz",
+    'bert-large-cased': "data/bert/bert-large-cased.tar.gz",
+    'bert-base-multilingual-uncased': "data/bert/bert-base-multilingual-uncased.tar.gz",
+    'bert-base-multilingual-cased': "data/bert/bert-base-multilingual-cased.tar.gz",
+    'bert-base-chinese': "data/bert/bert-base-chinese.tar.gz",
+}
+PRETRAINED_MODEL_TEMP_MAP = {
+    'bert-base-uncased': "data/bert/bert-base-uncased.tar.gz",
+    'bert-base-multilingual-uncased': "data/bert/bert-base-multilingual-uncased",
 }
 CONFIG_NAME = 'bert_config.json'
 WEIGHTS_NAME = 'pytorch_model.bin'
@@ -563,34 +567,42 @@ class BertPreTrainedModel(nn.Module):
                     ', '.join(PRETRAINED_MODEL_ARCHIVE_MAP.keys()),
                     archive_file))
             return None
-        if resolved_archive_file == archive_file:
-            logger.info("loading archive file {}".format(archive_file))
-        else:
-            logger.info("loading archive file {} from cache at {}".format(
-                archive_file, resolved_archive_file))
-        tempdir = None
-        if os.path.isdir(resolved_archive_file) or from_tf:
-            serialization_dir = resolved_archive_file
-        else:
-            # Extract archive to temp dir
-            tempdir = tempfile.mkdtemp()
-            logger.info("extracting archive file {} to temp dir {}".format(
-                resolved_archive_file, tempdir))
-            with tarfile.open(resolved_archive_file, 'r:gz') as archive:
-                archive.extractall(tempdir)
+
+        tempdir = PRETRAINED_MODEL_TEMP_MAP[pretrained_model_name_or_path]
+        if os.path.isdir(tempdir):
             serialization_dir = tempdir
+        else:
+            # removed from here ======================================================
+            if resolved_archive_file == archive_file:
+                logger.info("loading archive file {}".format(archive_file))
+            else:
+                logger.info("loading archive file {} from cache at {}".format(
+                    archive_file, resolved_archive_file))
+            tempdir = None
+            if os.path.isdir(resolved_archive_file) or from_tf:
+                serialization_dir = resolved_archive_file
+            else:
+                # Extract archive to temp dir
+                tempdir = tempfile.mkdtemp()
+                logger.info("extracting archive file {} to temp dir {}".format(
+                    resolved_archive_file, tempdir))
+                with tarfile.open(resolved_archive_file, 'r:gz') as archive:
+                    archive.extractall(tempdir)
+                serialization_dir = tempdir
+            # removed to here ======================================================
+
         # Load config
         config_file = os.path.join(serialization_dir, CONFIG_NAME)
         config = BertConfig.from_json_file(config_file)
-        logger.info("Model config {}".format(config))
+        # logger.info("Model config {}".format(config))
         # Instantiate model.
         model = cls(config, *inputs, **kwargs)
         if state_dict is None and not from_tf:
             weights_path = os.path.join(serialization_dir, WEIGHTS_NAME)
             state_dict = torch.load(weights_path, map_location='cpu' if not torch.cuda.is_available() else None)
-        if tempdir:
-            # Clean up temp dir
-            shutil.rmtree(tempdir)
+        # if tempdir:
+        #     # Clean up temp dir
+        #     shutil.rmtree(tempdir)
         if from_tf:
             # Directly load from a TensorFlow checkpoint
             weights_path = os.path.join(serialization_dir, TF_WEIGHTS_NAME)

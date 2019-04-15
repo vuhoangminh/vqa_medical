@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/med/minhmul_att_train_imagenet_h400_g8
+    dir_logs: logs/med/minhmul_att_train_imagenet_h200_g8_relu_bert
 vqa:
     dataset: VQA
     dir: data/vqa_med
@@ -18,21 +18,16 @@ coco:
 model:
     arch: MinhmulAtt
     dim_v: 2048
-    dim_q: 2400
+    dim_q: 768
     seq2vec:
-        arch: skipthoughts
-        dir_st: data/skip-thoughts
-        type: BayesianUniSkip
-        dropout: 0.25
-        fixed_emb: False
-    sen2vec:
         arch: bert
         dir_st: data/bert
         type: BayesianUniSkip
         dropout: 0.25
+        fixed_emb: False
     attention:
         nb_glimpses: 8
-        dim_h: 400
+        dim_h: 200
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
@@ -40,7 +35,7 @@ model:
         activation_q: relu
         activation_mm: relu
     fusion:
-        dim_h: 400
+        dim_h: 200
         dropout_v: 0.5
         dropout_q: 0.5
         activation_v: relu

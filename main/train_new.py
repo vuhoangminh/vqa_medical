@@ -26,7 +26,8 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_h200_g8_relu_bert.yaml', type=str,
+# parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_h200_g8_relu_bert.yaml', type=str,
+parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_h200_g8_relu.yaml', type=str,
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
@@ -101,7 +102,7 @@ def main():
                 'type': args.st_type,
                 'dropout': args.st_dropout,
                 'fixed_emb': args.st_fixed_emb
-            }
+            },
         },
         'optim': {
             'lr': args.learning_rate,
@@ -139,7 +140,7 @@ def main():
     if options['vqa']['trainsplit'] == 'train':
         valset = datasets.factory_VQA('val', options['vqa'], options['coco'])
         val_loader = valset.data_loader(batch_size=options['optim']['batch_size'],
-                                        num_workers=args.workers)                                        
+                                        num_workers=args.workers)
 
     if options['vqa']['trainsplit'] == 'trainval' or args.evaluate:
         testset = datasets.factory_VQA('test', options['vqa'], options['coco'])

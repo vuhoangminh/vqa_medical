@@ -28,6 +28,7 @@
 logs/*
 *.gz
 *.out
+data/*
 
 
 

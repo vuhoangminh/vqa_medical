@@ -28,8 +28,7 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
         if hasattr(model.module.seq2vec, 'dir_st'):
             input_question = Variable(sample['question'])
         else:
-            # questions = sample["item_vqa"]["question_raw"]
-            questions = sample["question_raw"]
+            questions = sample["item_vqa"]["question"]
             input_question = torch.zeros([sample['visual'].shape[0],768])
             for j in range(sample['visual'].shape[0]):
                 input_question[j] = torch.tensor(dict[questions[j]])
@@ -106,8 +105,7 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
             if hasattr(model.module.seq2vec, 'dir_st'):
                 input_question = Variable(sample['question'])
             else:
-                questions = sample["question_raw"]
-                # questions = sample["item_vqa"]["question"]
+                questions = sample["item_vqa"]["question"]
                 input_question = torch.zeros([sample['visual'].shape[0],768])
                 for j in range(sample['visual'].shape[0]):
                     input_question[j] = torch.tensor(dict[questions[j]])

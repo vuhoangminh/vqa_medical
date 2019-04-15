@@ -8,7 +8,8 @@ import torchvision.models as models
 # from .att import ConcatAtt, ElementsumAtt, MLBAtt, MutanAtt
 
 from .noatt import ElementsumNoAtt, MLBNoAtt, MutanNoAtt, MinhsumNoAtt, MinhmulNoAtt 
-from .att import MinhsumAtt, MinhmulAtt, ElementsumAtt, MLBAtt, MutanAtt, BilinearAtt
+# from .att import MinhsumAtt, MinhmulAtt, ElementsumAtt, MLBAtt, MutanAtt, BilinearAtt
+from .att import MinhmulAtt, BilinearAtt
 
 # from .noatt import MLBNoAtt, MutanNoAtt, ConcatNoAtt, ElementsumNoAtt
 # from .att import MLBAtt, MutanAtt, ConcatAtt, ElementsumAtt

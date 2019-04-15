@@ -9,6 +9,10 @@ from vqa.models import seq2vec
 from vqa.models import fusion
 
 
+def return_self(input):
+    return input
+
+
 class AbstractAtt(nn.Module):
 
     def __init__(self, opt={}, vocab_words=[], vocab_answers=[]):
@@ -18,7 +22,11 @@ class AbstractAtt(nn.Module):
         self.vocab_answers = vocab_answers
         self.num_classes = len(self.vocab_answers)
         # Modules
-        self.seq2vec = seq2vec.factory(self.vocab_words, self.opt['seq2vec'])
+        if self.opt['seq2vec']['arch'] == "bert":
+            self.seq2vec = return_self
+        else:
+            self.seq2vec = seq2vec.factory(
+                self.vocab_words, self.opt['seq2vec'])
         # Modules for attention
         self.conv_v_att = nn.Conv2d(self.opt['dim_v'],
                                     self.opt['attention']['dim_v'], 1, 1)
@@ -27,9 +35,10 @@ class AbstractAtt(nn.Module):
         self.conv_att = nn.Conv2d(self.opt['attention']['dim_mm'],
                                   self.opt['attention']['nb_glimpses'], 1, 1)
         # Modules for batch norm
-        self.batchnorm_conv_v_att = nn.BatchNorm2d(self.opt['attention']['dim_v'])                                  
+        self.batchnorm_conv_v_att = nn.BatchNorm2d(
+            self.opt['attention']['dim_v'])
         self.batchnorm_linear_q_att = nn.BatchNorm1d(
-            self.opt['attention']['dim_q'])                                  
+            self.opt['attention']['dim_q'])
         self.batchnorm_conv_att = nn.BatchNorm2d(
             self.opt['attention']['nb_glimpses'])
         self.batchnorm_fusion_att = nn.BatchNorm1d(
@@ -37,7 +46,7 @@ class AbstractAtt(nn.Module):
         self.batchnorm_list_linear_v_fusion = nn.BatchNorm1d(
             self.opt['attention']['dim_mm'])
         self.batchnorm_list_linear_q_fusion = nn.BatchNorm1d(
-            self.opt['attention']['dim_mm']*self.opt['attention']['nb_glimpses'])            
+            self.opt['attention']['dim_mm']*self.opt['attention']['nb_glimpses'])
         self.batchnorm_fusion_classif = nn.BatchNorm1d(
             self.opt['attention']['dim_mm']*self.opt['attention']['nb_glimpses'])
 
@@ -179,6 +188,8 @@ class AbstractAtt(nn.Module):
         return x
 
     def forward(self, input_v, input_q):
+
+        # if not hasattr(self, 'seq2vec'):
         if input_v.dim() != 4 and input_q.dim() != 2:
             raise ValueError
 
@@ -187,6 +198,37 @@ class AbstractAtt(nn.Module):
         x = self._fusion_glimpses(list_v_att, x_q_vec)
         x = self._classif(x)
         return x, list_v_record
+
+
+class MinhmulAtt(AbstractAtt):
+
+    def __init__(self, opt={}, vocab_words=[], vocab_answers=[]):
+        # TODO: deep copy ?
+        opt['attention']['dim_v'] = opt['attention']['dim_h']
+        opt['attention']['dim_q'] = opt['attention']['dim_h']
+        opt['attention']['dim_mm'] = opt['attention']['dim_h']
+        super(MinhmulAtt, self).__init__(opt, vocab_words, vocab_answers)
+        # Modules for classification
+        self.list_linear_v_fusion = nn.ModuleList([
+            nn.Linear(self.opt['dim_v'],
+                      self.opt['fusion']['dim_h'])
+            for i in range(self.opt['attention']['nb_glimpses'])])
+        self.linear_q_fusion = nn.Linear(self.opt['dim_q'],
+                                         self.opt['fusion']['dim_h']
+                                         * self.opt['attention']['nb_glimpses'])
+        self.linear_classif = nn.Linear(self.opt['fusion']['dim_h']
+                                        * self.opt['attention']['nb_glimpses'],
+                                        self.num_classes)
+
+    def _fusion_att(self, x_v, x_q):
+        x_att = torch.pow(x_q, 2)
+        x_att = torch.mul(x_v, x_att)
+        return x_att
+
+    def _fusion_classif(self, x_v, x_q):
+        x_mm = torch.pow(x_q, 2)
+        x_mm = torch.mul(x_v, x_mm)
+        return x_mm
 
 
 class BilinearAtt(AbstractAtt):
@@ -226,153 +268,6 @@ class BilinearAtt(AbstractAtt):
         x_mm = self.bilinear(x_v, x_q)
         return x_mm
 
-
-class MinhsumAtt(AbstractAtt):
-
-    def __init__(self, opt={}, vocab_words=[], vocab_answers=[]):
-        # TODO: deep copy ?
-        opt['attention']['dim_v'] = opt['attention']['dim_h']
-        opt['attention']['dim_q'] = opt['attention']['dim_h']
-        opt['attention']['dim_mm'] = opt['attention']['dim_h']
-        super(MinhsumAtt, self).__init__(opt, vocab_words, vocab_answers)
-        # Modules for classification
-        self.list_linear_v_fusion = nn.ModuleList([
-            nn.Linear(self.opt['dim_v'],
-                      self.opt['fusion']['dim_h'])
-            for i in range(self.opt['attention']['nb_glimpses'])])
-        self.linear_q_fusion = nn.Linear(self.opt['dim_q'],
-                                         self.opt['fusion']['dim_h']
-                                         * self.opt['attention']['nb_glimpses'])
-        self.linear_classif = nn.Linear(self.opt['fusion']['dim_h']
-                                        * self.opt['attention']['nb_glimpses'],
-                                        self.num_classes)
-
-    def _fusion_att(self, x_v, x_q):
-        x_att = torch.add(x_v, 4, x_q)
-        return x_att
-
     def _fusion_classif(self, x_v, x_q):
         x_mm = torch.add(x_v, 4, x_q)
         return x_mm
-
-
-class MinhmulAtt(AbstractAtt):
-
-    def __init__(self, opt={}, vocab_words=[], vocab_answers=[]):
-        # TODO: deep copy ?
-        opt['attention']['dim_v'] = opt['attention']['dim_h']
-        opt['attention']['dim_q'] = opt['attention']['dim_h']
-        opt['attention']['dim_mm'] = opt['attention']['dim_h']
-        super(MinhmulAtt, self).__init__(opt, vocab_words, vocab_answers)
-        # Modules for classification
-        self.list_linear_v_fusion = nn.ModuleList([
-            nn.Linear(self.opt['dim_v'],
-                      self.opt['fusion']['dim_h'])
-            for i in range(self.opt['attention']['nb_glimpses'])])
-        self.linear_q_fusion = nn.Linear(self.opt['dim_q'],
-                                         self.opt['fusion']['dim_h']
-                                         * self.opt['attention']['nb_glimpses'])
-        self.linear_classif = nn.Linear(self.opt['fusion']['dim_h']
-                                        * self.opt['attention']['nb_glimpses'],
-                                        self.num_classes)
-
-    def _fusion_att(self, x_v, x_q):
-        x_att = torch.pow(x_q, 2)
-        x_att = torch.mul(x_v, x_att)
-        return x_att
-
-    def _fusion_classif(self, x_v, x_q):
-        x_mm = torch.pow(x_q, 2)
-        x_mm = torch.mul(x_v, x_mm)
-        return x_mm
-
-
-class ElementsumAtt(AbstractAtt):
-
-    def __init__(self, opt={}, vocab_words=[], vocab_answers=[]):
-        # TODO: deep copy ?
-        opt['attention']['dim_v'] = opt['attention']['dim_h']
-        opt['attention']['dim_q'] = opt['attention']['dim_h']
-        opt['attention']['dim_mm'] = opt['attention']['dim_h']
-        super(ElementsumAtt, self).__init__(opt, vocab_words, vocab_answers)
-        # Modules for classification
-        self.list_linear_v_fusion = nn.ModuleList([
-            nn.Linear(self.opt['dim_v'],
-                      self.opt['fusion']['dim_h'])
-            for i in range(self.opt['attention']['nb_glimpses'])])
-        self.linear_q_fusion = nn.Linear(self.opt['dim_q'],
-                                         self.opt['fusion']['dim_h']
-                                         * self.opt['attention']['nb_glimpses'])
-        self.linear_classif = nn.Linear(self.opt['fusion']['dim_h']
-                                        * self.opt['attention']['nb_glimpses'],
-                                        self.num_classes)
-
-    def _fusion_att(self, x_v, x_q):
-        # x_att = torch.mul(x_v, x_q)
-        x_att = torch.add(x_v, 1, x_q)
-        return x_att
-
-    def _fusion_classif(self, x_v, x_q):
-        # x_mm = torch.mul(x_v, x_q)
-        x_mm = torch.add(x_v, 1, x_q)
-        return x_mm
-
-
-class MLBAtt(AbstractAtt):
-
-    def __init__(self, opt={}, vocab_words=[], vocab_answers=[]):
-        # TODO: deep copy ?
-        opt['attention']['dim_v'] = opt['attention']['dim_h']
-        opt['attention']['dim_q'] = opt['attention']['dim_h']
-        opt['attention']['dim_mm'] = opt['attention']['dim_h']
-        super(MLBAtt, self).__init__(opt, vocab_words, vocab_answers)
-        # Modules for classification
-        self.list_linear_v_fusion = nn.ModuleList([
-            nn.Linear(self.opt['dim_v'],
-                      self.opt['fusion']['dim_h'])
-            for i in range(self.opt['attention']['nb_glimpses'])])
-        self.linear_q_fusion = nn.Linear(self.opt['dim_q'],
-                                         self.opt['fusion']['dim_h']
-                                         * self.opt['attention']['nb_glimpses'])
-        self.linear_classif = nn.Linear(self.opt['fusion']['dim_h']
-                                        * self.opt['attention']['nb_glimpses'],
-                                        self.num_classes)
-
-    def _fusion_att(self, x_v, x_q):
-        x_att = torch.mul(x_v, x_q)
-        return x_att
-
-    def _fusion_classif(self, x_v, x_q):
-        x_mm = torch.mul(x_v, x_q)
-        return x_mm
-
-
-class MutanAtt(AbstractAtt):
-
-    def __init__(self, opt={}, vocab_words=[], vocab_answers=[]):
-        # TODO: deep copy ?
-        opt['attention']['dim_v'] = opt['attention']['dim_hv']
-        opt['attention']['dim_q'] = opt['attention']['dim_hq']
-        super(MutanAtt, self).__init__(opt, vocab_words, vocab_answers)
-        # Modules for classification
-        self.fusion_att = fusion.MutanFusion2d(self.opt['attention'],
-                                               visual_embedding=False,
-                                               question_embedding=False)
-        self.list_linear_v_fusion = nn.ModuleList([
-            nn.Linear(self.opt['dim_v'],
-                      int(self.opt['fusion']['dim_hv']
-                          / opt['attention']['nb_glimpses']))
-            for i in range(self.opt['attention']['nb_glimpses'])])
-        self.linear_q_fusion = nn.Linear(self.opt['dim_q'],
-                                         self.opt['fusion']['dim_hq'])
-        self.linear_classif = nn.Linear(self.opt['fusion']['dim_mm'],
-                                        self.num_classes)
-        self.fusion_classif = fusion.MutanFusion(self.opt['fusion'],
-                                                 visual_embedding=False,
-                                                 question_embedding=False)
-
-    def _fusion_att(self, x_v, x_q):
-        return self.fusion_att(x_v, x_q)
-
-    def _fusion_classif(self, x_v, x_q):
-        return self.fusion_classif(x_v, x_q)

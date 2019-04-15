@@ -27,13 +27,13 @@ from .file_utils import cached_path
 logger = logging.getLogger(__name__)
 
 PRETRAINED_VOCAB_ARCHIVE_MAP = {
-    'bert-base-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-uncased-vocab.txt",
-    'bert-large-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-uncased-vocab.txt",
-    'bert-base-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-cased-vocab.txt",
-    'bert-large-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-large-cased-vocab.txt",
-    'bert-base-multilingual-uncased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-uncased-vocab.txt",
-    'bert-base-multilingual-cased': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-multilingual-cased-vocab.txt",
-    'bert-base-chinese': "https://s3.amazonaws.com/models.huggingface.co/bert/bert-base-chinese-vocab.txt",
+    'bert-base-uncased': "data/bert/bert-base-uncased-vocab.txt",
+    'bert-large-uncased': "data/bert/bert-large-uncased-vocab.txt",
+    'bert-base-cased': "data/bert/bert-base-cased-vocab.txt",
+    'bert-large-cased': "data/bert/bert-large-cased-vocab.txt",
+    'bert-base-multilingual-uncased': "data/bert/bert-base-multilingual-uncased-vocab.txt",
+    'bert-base-multilingual-cased': "data/bert/bert-base-multilingual-cased-vocab.txt",
+    'bert-base-chinese': "data/bert/bert-base-chinese-vocab.txt",
 }
 PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP = {
     'bert-base-uncased': 512,
@@ -154,25 +154,26 @@ class BertTokenizer(object):
                 kwargs['do_lower_case'] = True
         else:
             vocab_file = pretrained_model_name_or_path
-        if os.path.isdir(vocab_file):
-            vocab_file = os.path.join(vocab_file, VOCAB_NAME)
+        if os.path.isfile(vocab_file):
+            resolved_vocab_file = vocab_file
         # redirect to the cache, if necessary
-        try:
-            resolved_vocab_file = cached_path(vocab_file, cache_dir=cache_dir)
-        except EnvironmentError:
-            logger.error(
-                "Model name '{}' was not found in model name list ({}). "
-                "We assumed '{}' was a path or url but couldn't find any file "
-                "associated to this path or url.".format(
-                    pretrained_model_name_or_path,
-                    ', '.join(PRETRAINED_VOCAB_ARCHIVE_MAP.keys()),
-                    vocab_file))
-            return None
-        if resolved_vocab_file == vocab_file:
-            logger.info("loading vocabulary file {}".format(vocab_file))
-        else:
-            logger.info("loading vocabulary file {} from cache at {}".format(
-                vocab_file, resolved_vocab_file))
+        # try:
+        #     resolved_vocab_file = cached_path(vocab_file, cache_dir=cache_dir)
+        # except EnvironmentError:
+        #     logger.error(
+        #         "Model name '{}' was not found in model name list ({}). "
+        #         "We assumed '{}' was a path or url but couldn't find any file "
+        #         "associated to this path or url.".format(
+        #             pretrained_model_name_or_path,
+        #             ', '.join(PRETRAINED_VOCAB_ARCHIVE_MAP.keys()),
+        #             vocab_file))
+        #     return None
+        
+        # if resolved_vocab_file == vocab_file:
+        #     logger.info("loading vocabulary file {}".format(vocab_file))
+        # else:
+        #     logger.info("loading vocabulary file {} from cache at {}".format(
+        #         vocab_file, resolved_vocab_file))
         if pretrained_model_name_or_path in PRETRAINED_VOCAB_POSITIONAL_EMBEDDINGS_SIZE_MAP:
             # if we're using a pretrained model, ensure the tokenizer wont index sequences longer
             # than the number of positional embeddings
