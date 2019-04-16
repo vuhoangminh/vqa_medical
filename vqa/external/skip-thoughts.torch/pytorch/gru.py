@@ -145,8 +145,11 @@ class BayesianGRU(AbstractGRU):
         batch_size = x.size(0)
         seq_length = x.size(1)
         # print(max_length)
+        # added by Minh - ugly hack for pytorch > 1.0.0
         if max_length is None:
             max_length = seq_length
+        # elif max_length.shape[0] > 1:
+        #     max_length = max(max_length)
         output = []
         for i in range(max_length):
             hx = self.gru_cell(x[:,i,:], hx=hx)

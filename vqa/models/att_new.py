@@ -35,16 +35,10 @@ class AbstractAtt(nn.Module):
         self.conv_att = nn.Conv2d(self.opt['attention']['dim_mm'],
                                   self.opt['attention']['nb_glimpses'], 1, 1)
         # Modules for batch norm
-<<<<<<< HEAD:vqa/models/att_new.py
         self.batchnorm_conv_v_att = nn.BatchNorm2d(
             self.opt['attention']['dim_v'])
         self.batchnorm_linear_q_att = nn.BatchNorm1d(
             self.opt['attention']['dim_q'])
-=======
-        self.batchnorm_conv_v_att = nn.BatchNorm2d(self.opt['attention']['dim_v'])                                  
-        self.batchnorm_linear_q_att = nn.BatchNorm1d(
-            self.opt['attention']['dim_q'])                                  
->>>>>>> c4eaabf4ce01e2943b28a334a24c16712e1dfc6a:vqa/models/att_full.py
         self.batchnorm_conv_att = nn.BatchNorm2d(
             self.opt['attention']['nb_glimpses'])
         self.batchnorm_fusion_att = nn.BatchNorm1d(
@@ -52,11 +46,7 @@ class AbstractAtt(nn.Module):
         self.batchnorm_list_linear_v_fusion = nn.BatchNorm1d(
             self.opt['attention']['dim_mm'])
         self.batchnorm_list_linear_q_fusion = nn.BatchNorm1d(
-<<<<<<< HEAD:vqa/models/att_new.py
             self.opt['attention']['dim_mm']*self.opt['attention']['nb_glimpses'])
-=======
-            self.opt['attention']['dim_mm']*self.opt['attention']['nb_glimpses'])            
->>>>>>> c4eaabf4ce01e2943b28a334a24c16712e1dfc6a:vqa/models/att_full.py
         self.batchnorm_fusion_classif = nn.BatchNorm1d(
             self.opt['attention']['dim_mm']*self.opt['attention']['nb_glimpses'])
 

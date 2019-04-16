@@ -186,11 +186,19 @@ def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None):
     for i, sample in enumerate(loader):
         batch_size = sample['visual'].size(0)
 
-        # input_visual = Variable(sample['visual'].cuda(), volatile=True)
-        # input_question = Variable(sample['question'].cuda(), volatile=True)
+        # input of Bert vs Skip-thoughts
+        if hasattr(model.module.seq2vec, 'dir_st'):
+            input_question = sample['question']
+        else:
+            questions = sample["question_raw"]
+            # questions = sample["item_vqa"]["question"]
+            input_question = torch.zeros([sample['visual'].shape[0],3072])
+            for j in range(sample['visual'].shape[0]):
+                input_question[j] = torch.tensor(dict[questions[j]])
+            input_question = input_question.cuda()
 
         input_visual = sample['visual'].cuda()
-        input_question = sample['question'].cuda()
+        # input_question = sample['question'].cuda()
 
         # compute output
         output, hidden = model(input_visual, input_question)
