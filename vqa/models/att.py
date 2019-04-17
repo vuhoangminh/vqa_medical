@@ -253,8 +253,8 @@ class BilinearAtt(AbstractAtt):
 
         self.bilinear = nn.Bilinear(self.opt['attention']['dim_v']
                                     * self.opt['attention']['nb_glimpses'],
-                                    self.opt['attention']['dim_q']
-                                    * self.opt['attention']['nb_glimpses'],
+                                    self.opt['attention']['dim_q'],
+                                    # * self.opt['attention']['nb_glimpses'],
                                     self.opt['attention']['dim_mm'])
 
     def _fusion_att(self, x_v, x_q):
@@ -264,8 +264,8 @@ class BilinearAtt(AbstractAtt):
 
     def _fusion_classif(self, x_v, x_q):
         x_q = torch.pow(x_q, 2)
-        # x_q = x_q.view(x_q.shape[0], int(
-        #     x_q.shape[1]/self.opt['attention']['nb_glimpses']), -1)
-        # x_q = torch.sum(x_q, dim=2)
+        x_q = x_q.view(x_q.shape[0], int(
+            x_q.shape[1]/self.opt['attention']['nb_glimpses']), -1)
+        x_q = torch.sum(x_q, dim=2)/self.opt['attention']['nb_glimpses']
         x_mm = self.bilinear(x_v, x_q)
         return x_mm

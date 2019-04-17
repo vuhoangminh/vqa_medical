@@ -12,7 +12,7 @@ PROJECT_DIR = path_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
 LOGS_DIR = PROJECT_DIR + "/logs/"
 
 
-def get_val_acc1_from_json(json_path, num=20):
+def get_val_acc1_from_json_old(json_path, num=20):
     with open(json_path) as f:
         data = json.load(f)
     val = data["logged"]["val"]["acc1"]
@@ -26,6 +26,33 @@ def get_val_acc1_from_json(json_path, num=20):
     for i in range(fr, to+1):
         acc1 = val["{}".format(str(i))]
         list_acc1.append(acc1)
+    return list_acc1, to
+
+
+# Function returns N largest elements
+def Nmaxelements(list1, N):
+    final_list = []
+    for i in range(0, N):
+        max1 = 0
+        for j in range(len(list1)):
+            if list1[j] > max1:
+                max1 = list1[j]
+        list1.remove(max1)
+        final_list.append(max1)
+    return final_list
+
+
+def get_val_acc1_from_json(json_path, num=20):
+    with open(json_path) as f:
+        data = json.load(f)
+    val = data["logged"]["val"]["acc1"]
+    # pprint(val)
+    list_acc1 = []
+    max_acc1 = max(list(val.values()))
+    for key, value in val.items():
+        if value == max_acc1:
+            to = int(key)
+    list_acc1 = Nmaxelements(list(val.values()), N=num)
     return list_acc1, to
 
 
@@ -75,20 +102,22 @@ def main():
             mean, std, to = process_one_method_one_dataset(folder)
             # print("{}: \t {:.2f}({:.2f})".format(
             #     path_utils.get_filename_without_extension(folder), mean, std))
+            if "bilinear_att_train_imagenet_h200_g4_relu" in folder:
+                a = 2
             info = get_info(path_utils.get_filename_without_extension(folder))
-            if to > 30:
-                df = df.append(pd.DataFrame({'name':        [info[0]],
-                                             'method':      [info[1]],
-                                             'image':       [info[2]],
-                                             'question':    [info[3]],
-                                             'dim_h':       [info[4]],
-                                             'nb_glimpses': [info[5]],
-                                             'activation':  [info[6]],
-                                             'epoch_max':   [to],
-                                             'mean':        [mean.round(2)],
-                                             'std':         [std.round(2)]
-                                             }),
-                               ignore_index=True)
+            # if to > 30:
+            df = df.append(pd.DataFrame({'name':        [info[0]],
+                                            'method':      [info[1]],
+                                            'image':       [info[2]],
+                                            'question':    [info[3]],
+                                            'dim_h':       [info[4]],
+                                            'nb_glimpses': [info[5]],
+                                            'activation':  [info[6]],
+                                            'epoch_max':   [to],
+                                            'mean':        [mean.round(2)],
+                                            'std':         [std.round(2)]
+                                            }),
+                            ignore_index=True)
 
         print(df)
         df.to_csv(df_path, index=False)
