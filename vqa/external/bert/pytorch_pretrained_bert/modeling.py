@@ -46,7 +46,7 @@ PRETRAINED_MODEL_ARCHIVE_MAP = {
     'bert-base-chinese': "data/bert/bert-base-chinese.tar.gz",
 }
 PRETRAINED_MODEL_TEMP_MAP = {
-    'bert-base-uncased': "data/bert/bert-base-uncased.tar.gz",
+    'bert-base-uncased': "data/bert/bert-base-uncased",
     'bert-base-multilingual-uncased': "data/bert/bert-base-multilingual-uncased",
 }
 CONFIG_NAME = 'bert_config.json'
