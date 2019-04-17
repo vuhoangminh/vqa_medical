@@ -48,6 +48,7 @@ PRETRAINED_MODEL_ARCHIVE_MAP = {
 PRETRAINED_MODEL_TEMP_MAP = {
     'bert-base-uncased': "data/bert/bert-base-uncased",
     'bert-base-multilingual-uncased': "data/bert/bert-base-multilingual-uncased",
+    'bert-base-multilingual-cased': "data/bert/bert-base-multilingual-cased",
 }
 CONFIG_NAME = 'bert_config.json'
 WEIGHTS_NAME = 'pytorch_model.bin'

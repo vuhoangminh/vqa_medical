@@ -29,7 +29,6 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 
-
 from vqa.external.bert.pytorch_pretrained_bert.tokenization import BertTokenizer
 from vqa.external.bert.pytorch_pretrained_bert.modeling import BertModel
 
