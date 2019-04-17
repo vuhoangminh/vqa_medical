@@ -236,7 +236,7 @@ def sen2vec(questions, bert_model="bert-base-multilingual-uncased", layers="-1,-
             if i == 1:
                 v_q = all_encoder_layers[-i][:, 0, :]
             else:
-                v_q += all_encoder_layers[-i][:, 0, :]
+                v_q = torch.cat((v_q, all_encoder_layers[-i][:, 0, :]), dim=1)
         v_q /= 4
 
         # print(v_q)
