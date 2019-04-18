@@ -808,8 +808,8 @@ class PowerPILMed(RandomOrder):
                  shift=0.2,
                  scale=0.4):
         self.transforms = []
-        if sharpness != 0:
-            self.transforms.append(PILSharpness(sharpness))
+        # if sharpness != 0:
+        #     self.transforms.append(PILSharpness(sharpness))
         if random.random() < shift:
             self.transforms.append(RandomShift(1))
         if random.random() < scale:

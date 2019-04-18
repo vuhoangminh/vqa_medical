@@ -42,7 +42,7 @@ parser.add_argument('--mode', default='both', type=str,
                     help='Options: att | noatt | (default) both')
 parser.add_argument('--size', default=448, type=int,
                     help='Image size (448 for noatt := avg pooling to get 224) (default:448)')
-parser.add_argument('--is_augment_image', default='1',
+parser.add_argument('--is_augment_image', default='0',
                     help='whether to augment images at the beginning of every epoch?')
 
 
@@ -124,9 +124,9 @@ def main():
     elif args.dataset == 'med':
         if gen_utils.str2bool(args.is_augment_image):
             transform = transforms.Compose([
-                transforms.Scale(args.size),
-                transforms.CenterCrop(args.size),
-                transforms.RandomHorizontalFlip(p=0.4),
+                transforms.Resize(args.size),
+                # transforms.CenterCrop(args.size),
+                # transforms.RandomHorizontalFlip(),
                 transforms.RandomRotation(degrees=(-30, 30)),
                 augment_utils.PowerPILMed(),
                 transforms.ToTensor(),
@@ -134,7 +134,7 @@ def main():
             ])
         else:
             transform = transforms.Compose([
-                transforms.Scale(args.size),
+                transforms.Resize(args.size),
                 transforms.CenterCrop(args.size),
                 transforms.ToTensor(),
                 normalize,
@@ -153,12 +153,15 @@ def main():
     # if args.dataset == "med":
     #     extract_med(data_loader, model, path_file, args.mode)
     # else:
-    extract(data_loader, model, path_file, args.mode)
+    extract(data_loader, model, path_file, args.mode, args.is_augment_image)
 
 
-def extract(data_loader, model, path_file, mode):
+def extract(data_loader, model, path_file, mode, is_augment_image):
     path_hdf5 = path_file + '.hdf5'
     path_txt = path_file + '.txt'
+    if os.path.exists(path_hdf5):
+        print("remove existing", path_hdf5)
+        os.remove(path_hdf5)
     hdf5_file = h5py.File(path_hdf5, 'w')
 
     # estimate output shapes
@@ -184,34 +187,32 @@ def extract(data_loader, model, path_file, mode):
     end = time.time()
 
     idx = 0
-    for i, input in enumerate(data_loader):
-        print_utils.print_tqdm(i, len(data_loader), cutoff=10)
-        input_var = Variable(input['visual'], volatile=True)
-        output_att, _ = model(input_var)
+    if gen_utils.str2bool(is_augment_image):
+        print("\n>> extract augmented images\n")
+    else:
+        print("\n>> extract original images\n")
 
-        nb_regions = output_att.size(2) * output_att.size(3)
-        output_noatt = output_att.sum(3).sum(2).div(nb_regions).view(-1, 2048)
+    with torch.no_grad():
+        for i, input in enumerate(data_loader):
+            print_utils.print_tqdm(i, len(data_loader), cutoff=10)
+            input_var = Variable(input['visual'])
+            output_att, _ = model(input_var)
 
-        batch_size = output_att.size(0)
-        if mode == 'both' or mode == 'att':
-            hdf5_att[idx:idx+batch_size] = output_att.data.cpu().numpy()
-        if mode == 'both' or mode == 'noatt':
-            hdf5_noatt[idx:idx+batch_size] = output_noatt.data.cpu().numpy()
-        idx += batch_size
+            nb_regions = output_att.size(2) * output_att.size(3)
+            output_noatt = output_att.sum(3).sum(2).div(nb_regions).view(-1, 2048)
 
-        torch.cuda.synchronize()
-        batch_time.update(time.time() - end)
-        end = time.time()
+            batch_size = output_att.size(0)
+            if mode == 'both' or mode == 'att':
+                hdf5_att[idx:idx+batch_size] = output_att.data.cpu().numpy()
+            if mode == 'both' or mode == 'noatt':
+                hdf5_noatt[idx:idx+batch_size] = output_noatt.data.cpu().numpy()
+            idx += batch_size
 
-        # if i % 1 == 0:
-        #     print('Extract: [{0}/{1}]\t'
-        #           'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-        #           'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'.format(
-        #               i, len(data_loader),
-        #               batch_time=batch_time,
-        #               data_time=data_time,))
+            torch.cuda.synchronize()
+            batch_time.update(time.time() - end)
+            end = time.time()
 
-    hdf5_file.close()
+        hdf5_file.close()
 
     # Saving image names in the same order than extraction
     with open(path_txt, 'w') as handle:

@@ -28,12 +28,14 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_h200_g4_relu_bert.yaml', type=str,
+parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_h200_g4_relu.yaml', type=str,
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
 # logs options
-parser.add_argument('--dir_logs', type=str, help='dir logs')
+parser.add_argument('--dir_logs',
+                    default='logs/med/minhmul_att_train_imagenet_h200_g4_relu_augment',
+                    type=str, help='dir logs')
 # data options
 parser.add_argument('--vqa_trainsplit', type=str,
                     choices=['train', 'trainval'], default="train")
@@ -47,10 +49,10 @@ parser.add_argument('--st_dropout', type=float)
 parser.add_argument('--st_fixed_emb', default=None, type=utils.str2bool,
                     help='backprop on embedding')
 # bert options
-parser.add_argument('--bert_model', default="bert-base-multilingual-cased",
+parser.add_argument('--bert_model', default="bert-base-multilingual-uncased",
                     help='bert model: bert-base-uncased | bert-base-multilingual-uncased | bert-base-multilingual-cased')
 # image options
-parser.add_argument('--is_augment_image', default=False,
+parser.add_argument('--is_augment_image', default='1',
                     help='whether to augment images at the beginning of every epoch?')
 # optim options
 parser.add_argument('-lr', '--learning_rate', type=float,
@@ -242,12 +244,12 @@ def main():
     #########################################################################################
 
     for epoch in range(args.start_epoch+1, options['optim']['epochs']):
-        if epoch > 0 and gen_utils.str2bool(args.is_augment_image) and 'options/med/' in args.path_opt:
-            cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 1"
-            os.system(cmd)
-        elif epoch == 0 and 'options/med/' in args.path_opt:
-            cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 0"
-            os.system(cmd)
+        # if epoch > 1 and gen_utils.str2bool(args.is_augment_image) and 'options/med/' in args.path_opt:
+        #     cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 1 -b 64"
+        #     os.system(cmd)
+        # if epoch == 1 and 'options/med/' in args.path_opt:
+        #     cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 0 -b 64"
+        #     os.system(cmd)
 
         # train for one epoch
         engine.train(train_loader, model, criterion, optimizer,
