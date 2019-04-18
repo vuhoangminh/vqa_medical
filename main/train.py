@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/med/bilinear_att_train_imagenet_h100_g8_relu.yaml', type=str,
+parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_h200_g4_relu_bert.yaml', type=str,
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
@@ -44,6 +44,9 @@ parser.add_argument('--st_type',
 parser.add_argument('--st_dropout', type=float)
 parser.add_argument('--st_fixed_emb', default=None, type=utils.str2bool,
                     help='backprop on embedding')
+# bert options
+parser.add_argument('--bert_model', default="bert-base-multilingual-cased",
+                    help='bert model: bert-base-uncased | bert-base-multilingual-uncased | bert-base-multilingual-cased')
 # optim options
 parser.add_argument('-lr', '--learning_rate', type=float,
                     help='initial learning rate')
@@ -78,6 +81,8 @@ CURRENT_WORKING_DIR = os.path.realpath(__file__)
 PROJECT_DIR = path_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
 RAW_DIR = PROJECT_DIR + "/data/vqa_med/raw/raw/"
 EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features.pickle"
+BASE_EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features_base.pickle"
+CASED_EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features_cased.pickle"
 
 
 def main():
@@ -87,6 +92,12 @@ def main():
     #########################################################################################
     # Create options
     #########################################################################################
+    if args.bert_model == "bert-base-uncased":
+        question_features_path = BASE_EXTRACTED_QUES_FEATURES_PATH
+    elif args.bert_model == "bert-base-multilingual-cased":
+        question_features_path = CASED_EXTRACTED_QUES_FEATURES_PATH
+    else:
+        question_features_path = EXTRACTED_QUES_FEATURES_PATH
 
     options = {
         'vqa': {
@@ -139,7 +150,7 @@ def main():
     if options['vqa']['trainsplit'] == 'train':
         valset = datasets.factory_VQA('val', options['vqa'], options['coco'])
         val_loader = valset.data_loader(batch_size=options['optim']['batch_size'],
-                                        num_workers=args.workers)                                        
+                                        num_workers=args.workers)
 
     if options['vqa']['trainsplit'] == 'trainval' or args.evaluate:
         testset = datasets.factory_VQA('test', options['vqa'], options['coco'])
@@ -230,13 +241,17 @@ def main():
 
         # train for one epoch
         engine.train(train_loader, model, criterion, optimizer,
-                     exp_logger, epoch, args.print_freq, dict=io_utils.read_pickle(EXTRACTED_QUES_FEATURES_PATH))
+                     exp_logger, epoch, args.print_freq,
+                     dict=io_utils.read_pickle(question_features_path),
+                     bert_dim=options["model"]["dim_q"])
 
         if options['vqa']['trainsplit'] == 'train':
             # evaluate on validation set
             acc1, val_results = engine.validate(val_loader, model, criterion,
                                                 exp_logger, epoch, args.print_freq, topk=5,
-                                                dict=io_utils.read_pickle(EXTRACTED_QUES_FEATURES_PATH))
+                                                dict=io_utils.read_pickle(
+                                                    question_features_path),
+                                                bert_dim=options["model"]["dim_q"])
             # remember best prec@1 and save checkpoint
             is_best = acc1 > best_acc1
             best_acc1 = max(acc1, best_acc1)
@@ -259,7 +274,9 @@ def main():
         else:
             test_results, testdev_results = engine.test(test_loader, model, exp_logger,
                                                         epoch, args.print_freq, topk=5,
-                                                        dict=io_utils.read_pickle(EXTRACTED_QUES_FEATURES_PATH))
+                                                        dict=io_utils.read_pickle(
+                                                            question_features_path),
+                                                        bert_dim=options["model"]["dim_q"])
 
             # save checkpoint at every timestep
             save_checkpoint({

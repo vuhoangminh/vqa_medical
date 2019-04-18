@@ -186,8 +186,12 @@ def sen2vec(questions, bert_model="bert-base-multilingual-uncased", layers="-1,-
 
     layer_indexes = [int(x) for x in layers.split(",")]
 
-    tokenizer = BertTokenizer.from_pretrained(
-        bert_model, do_lower_case=True)
+    if "-cased" in bert_model:
+        tokenizer = BertTokenizer.from_pretrained(
+            bert_model, do_lower_case=False)
+    else:
+        tokenizer = BertTokenizer.from_pretrained(
+            bert_model, do_lower_case=True)
 
     examples = read_strings(questions)
 

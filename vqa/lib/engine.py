@@ -6,7 +6,7 @@ import datasets.utils.metrics_utils as metrics_utils
 from vqa.models import sen2vec
 
 
-def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dict=None):
+def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dict=None, bert_dim=3072):
     # switch to train mode
     model.train()
     meters = logger.reset_meters('train')
@@ -30,12 +30,15 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
         else:
             # questions = sample["item_vqa"]["question_raw"]
             questions = sample["question_raw"]
-            input_question = torch.zeros([sample['visual'].shape[0],3072])
+            input_question = torch.zeros([sample['visual'].shape[0], bert_dim])
             for j in range(sample['visual'].shape[0]):
-                input_question[j] = torch.tensor(dict[questions[j]])
+                if bert_dim == 3072:
+                    input_question[j] = torch.tensor(dict[questions[j]])
+                else:
+                    input_question[j] = torch.tensor(
+                        dict[questions[j]])[768:1536]
             input_question = Variable(input_question)
 
-            
         input_visual = Variable(sample['visual'])
         target_answer = Variable(sample['answer'].cuda())
 
@@ -86,7 +89,7 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
     logger.log_meters('train', n=epoch)
 
 
-def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, dict=None):
+def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, dict=None, bert_dim=3072):
     results = []
     bleu_score = 0
     n_sample = 0
@@ -108,9 +111,14 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
             else:
                 questions = sample["question_raw"]
                 # questions = sample["item_vqa"]["question"]
-                input_question = torch.zeros([sample['visual'].shape[0],3072])
+                input_question = torch.zeros(
+                    [sample['visual'].shape[0], bert_dim])
                 for j in range(sample['visual'].shape[0]):
-                    input_question[j] = torch.tensor(dict[questions[j]])
+                    if bert_dim == 3072:
+                        input_question[j] = torch.tensor(dict[questions[j]])
+                    else:
+                        input_question[j] = torch.tensor(
+                            dict[questions[j]])[768:1536]
                 input_question = input_question.cuda()
 
             input_visual = sample['visual'].cuda()
@@ -175,7 +183,7 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
     return meters['acc1'].avg, results
 
 
-def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None):
+def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None, bert_dim=3072):
     results = []
     testdev_results = []
 
@@ -192,9 +200,13 @@ def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None):
         else:
             questions = sample["question_raw"]
             # questions = sample["item_vqa"]["question"]
-            input_question = torch.zeros([sample['visual'].shape[0],3072])
+            input_question = torch.zeros([sample['visual'].shape[0], bert_dim])
             for j in range(sample['visual'].shape[0]):
-                input_question[j] = torch.tensor(dict[questions[j]])
+                    if bert_dim == 3072:
+                        input_question[j] = torch.tensor(dict[questions[j]])
+                    else:
+                        input_question[j] = torch.tensor(
+                            dict[questions[j]])[768:1536]
             input_question = input_question.cuda()
 
         input_visual = sample['visual'].cuda()

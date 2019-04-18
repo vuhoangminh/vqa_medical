@@ -13,6 +13,7 @@ RAW_DIR = PROJECT_DIR + "/data/vqa_med/raw/raw/"
 PROCESSED_QA_PER_QUESTION_PATH = RAW_DIR + "med_qa_per_question.csv"
 EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features.pickle"
 BASE_EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features_base.pickle"
+CASED_EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features_cased.pickle"
 
 
 def main():
@@ -33,14 +34,14 @@ def main():
             to = len(list_questions)
         print_utils.print_tqdm(to, len(list_questions), cutoff=2)
         questions = list_questions[fr:to]
-        input_question = sen2vec.sen2vec(questions, bert_model="bert-base-uncased")
+        input_question = sen2vec.sen2vec(questions, bert_model="bert-base-multilingual-cased")
         for q, question in enumerate(questions):
             dict[question] = input_question[q].cpu().detach().numpy()
         # print(len(dict))
         del questions, input_question
         # torch.cuda.empty_cache()
 
-    io_utils.write_pickle(dict, BASE_EXTRACTED_QUES_FEATURES_PATH)
+    io_utils.write_pickle(dict, CASED_EXTRACTED_QUES_FEATURES_PATH)
 
 
 if __name__ == '__main__':
