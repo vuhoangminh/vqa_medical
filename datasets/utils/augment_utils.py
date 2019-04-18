@@ -38,7 +38,6 @@ def separate_resnet_bn_paras(modules):
             else:
                 paras_wo_bn_to_finetune.extend([*layer.parameters()])
 
-
     return paras_only_bn, paras_wo_bn, paras_wo_bn_to_finetune
 
 
@@ -64,7 +63,6 @@ def make_weights_for_balanced_classes(images, nclasses):
         weight[idx] = weight_per_class[val[1]]
 
     return weight, weight_per_class
-
 
 
 def rgb2gray(rgb):
@@ -806,21 +804,12 @@ class PowerPIL(RandomOrder):
 
 class PowerPILMed(RandomOrder):
     def __init__(self,
-                 contrast=0.3,
-                 brightness=0.3,
-                 sharpness=0.4,
-                 erase=0.1,
+                 sharpness=0.1,
                  shift=0.2,
                  scale=0.4):
         self.transforms = []
-        if brightness != 0:
-            self.transforms.append(PILBrightness(brightness))
-        if contrast != 0:
-            self.transforms.append(PILContrast(contrast))
         if sharpness != 0:
             self.transforms.append(PILSharpness(sharpness))
-        if random.random() < erase:
-            self.transforms.append(RandomErase(1))
         if random.random() < shift:
             self.transforms.append(RandomShift(1))
         if random.random() < scale:

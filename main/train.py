@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
 
+import vqa.lib.utils as gen_utils
 import datasets.utils.paths_utils as path_utils
 import datasets.utils.io_utils as io_utils
 import vqa.lib.engine as engine
@@ -18,6 +19,7 @@ import vqa.lib.logger as logger
 import vqa.lib.criterions as criterions
 import vqa.datasets as datasets
 import vqa.models as models
+
 
 parser = argparse.ArgumentParser(
     description='Train/Evaluate models',
@@ -47,6 +49,9 @@ parser.add_argument('--st_fixed_emb', default=None, type=utils.str2bool,
 # bert options
 parser.add_argument('--bert_model', default="bert-base-multilingual-cased",
                     help='bert model: bert-base-uncased | bert-base-multilingual-uncased | bert-base-multilingual-cased')
+# image options
+parser.add_argument('--is_augment_image', default=False,
+                    help='whether to augment images at the beginning of every epoch?')
 # optim options
 parser.add_argument('-lr', '--learning_rate', type=float,
                     help='initial learning rate')
@@ -237,7 +242,12 @@ def main():
     #########################################################################################
 
     for epoch in range(args.start_epoch+1, options['optim']['epochs']):
-        #adjust_learning_rate(optimizer, epoch)
+        if epoch > 0 and gen_utils.str2bool(args.is_augment_image) and 'options/med/' in args.path_opt:
+            cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 1"
+            os.system(cmd)
+        elif epoch == 0 and 'options/med/' in args.path_opt:
+            cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 0"
+            os.system(cmd)
 
         # train for one epoch
         engine.train(train_loader, model, criterion, optimizer,

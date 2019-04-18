@@ -2,25 +2,24 @@ import argparse
 import os
 import time
 import h5py
-import numpy
 
 import torch
-import torch.nn as nn
 import torch.nn.parallel
-import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
-import vqa.models.convnets as convnets
 import vqa.models.convnets_idrid as convnets_idrid
 import vqa.models.convnets_breast as convnets_breast
 import vqa.models.convnets_tools as convnets_tools
 import vqa.models.convnets_med as convnets_med
 import vqa.datasets as datasets
+import datasets.utils.augment_utils as augment_utils
+import vqa.lib.utils as gen_utils
 from vqa.lib.dataloader import DataLoader
 from vqa.lib.logger import AvgMeter
+import datasets.utils.print_utils as print_utils
 
 parser = argparse.ArgumentParser(description='Extract')
 parser.add_argument('--dataset', default='med',
@@ -43,8 +42,8 @@ parser.add_argument('--mode', default='both', type=str,
                     help='Options: att | noatt | (default) both')
 parser.add_argument('--size', default=448, type=int,
                     help='Image size (448 for noatt := avg pooling to get 224) (default:448)')
-
-debug = 1
+parser.add_argument('--is_augment_image', default='1',
+                    help='whether to augment images at the beginning of every epoch?')
 
 
 def main():
@@ -123,13 +122,25 @@ def main():
                                             normalize,
                                         ]))
     elif args.dataset == 'med':
+        if gen_utils.str2bool(args.is_augment_image):
+            transform = transforms.Compose([
+                transforms.Scale(args.size),
+                transforms.CenterCrop(args.size),
+                transforms.RandomHorizontalFlip(p=0.4),
+                transforms.RandomRotation(degrees=(-30, 30)),
+                augment_utils.PowerPILMed(),
+                transforms.ToTensor(),
+                normalize,
+            ])
+        else:
+            transform = transforms.Compose([
+                transforms.Scale(args.size),
+                transforms.CenterCrop(args.size),
+                transforms.ToTensor(),
+                normalize,
+            ])
         dataset = datasets.MEDImages(args.data_split, dict(dir=args.dir_data),
-                                     transform=transforms.Compose([
-                                         transforms.Scale(args.size),
-                                         transforms.CenterCrop(args.size),
-                                         transforms.ToTensor(),
-                                         normalize,
-                                     ]))
+                                     transform=transform)
 
     data_loader = DataLoader(dataset,
                              batch_size=args.batch_size, shuffle=False,
@@ -174,6 +185,7 @@ def extract(data_loader, model, path_file, mode):
 
     idx = 0
     for i, input in enumerate(data_loader):
+        print_utils.print_tqdm(i, len(data_loader), cutoff=10)
         input_var = Variable(input['visual'], volatile=True)
         output_att, _ = model(input_var)
 
@@ -191,13 +203,13 @@ def extract(data_loader, model, path_file, mode):
         batch_time.update(time.time() - end)
         end = time.time()
 
-        if i % 1 == 0:
-            print('Extract: [{0}/{1}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'.format(
-                      i, len(data_loader),
-                      batch_time=batch_time,
-                      data_time=data_time,))
+        # if i % 1 == 0:
+        #     print('Extract: [{0}/{1}]\t'
+        #           'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+        #           'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'.format(
+        #               i, len(data_loader),
+        #               batch_time=batch_time,
+        #               data_time=data_time,))
 
     hdf5_file.close()
 

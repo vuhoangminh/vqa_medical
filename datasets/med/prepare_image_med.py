@@ -189,33 +189,6 @@ def get_class_image_model(df, line, is_keyword=False):
                            ignore_index=True)
         else:
             df.at[index[0], 'abnormal'] = abnormal
-
-    # if plane != "":
-    #     if len(index) == 0:
-    #         df = df.append(pd.DataFrame({"image": [image],
-    #                                      "modality": [""],
-    #                                      "plane": [plane],
-    #                                      "organ": [""]}),
-    #                                      ignore_index=True)
-    #     else:
-    #         df.at[index[0], 'plane'] = plane
-    # if organ != "":
-    #     if len(index) == 0:
-    #         df = df.append(pd.DataFrame({"image": [image],
-    #                                      "modality": [""],
-    #                                      "plane": [""],
-    #                                      "organ": [organ]}), ignore_index=True)
-    #     else:
-    #         df.at[index[0], 'organ'] = organ
-    # if modality != "":
-    #     if len(index) == 0:
-    #         df = df.append(pd.DataFrame({"image": [image],
-    #                                      "modality": [modality],
-    #                                      "plane": [""],
-    #                                      "organ": [""]}), ignore_index=True)
-    #     else:
-    #         df.at[index[0], 'modality'] = modality
-
     return df
 
 
