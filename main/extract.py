@@ -30,7 +30,9 @@ parser.add_argument('--dir_data', default='data/raw/vqa_med/preprocessed',
                     help='dir dataset to download or/and load images')
 parser.add_argument('--data_split', default='train', type=str,
                     help='Options: (default) train | val | test')
-parser.add_argument('--arch', '-a', default='fbresnet152',
+parser.add_argument('--arch', '-a',
+                    default='fbresnet152',
+                    # default='densenet121',
                     help='model architecture: ' +
                     ' | '.join(convnets_idrid.model_names) +
                     ' (default: fbresnet152)')
@@ -127,7 +129,7 @@ def main():
                 transforms.Resize(args.size),
                 # transforms.CenterCrop(args.size),
                 # transforms.RandomHorizontalFlip(),
-                transforms.RandomRotation(degrees=(-30, 30)),
+                transforms.RandomRotation(degrees=(-20, 20)),
                 augment_utils.PowerPILMed(),
                 transforms.ToTensor(),
                 normalize,
@@ -199,7 +201,8 @@ def extract(data_loader, model, path_file, mode, is_augment_image):
             output_att, _ = model(input_var)
 
             nb_regions = output_att.size(2) * output_att.size(3)
-            output_noatt = output_att.sum(3).sum(2).div(nb_regions).view(-1, 2048)
+            output_noatt = output_att.sum(3).sum(
+                2).div(nb_regions).view(-1, 2048)
 
             batch_size = output_att.size(0)
             if mode == 'both' or mode == 'att':
