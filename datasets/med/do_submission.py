@@ -123,10 +123,10 @@ DICT_METHOD = {
 
 
 DICT_SCORE_MAP = {
-    'answer1': 16,
-    'answer2': 8,
-    'answer3': 4,
-    'answer4': 2,
+    'answer1': 81,
+    'answer2': 27,
+    'answer3': 9,
+    'answer4': 3,
     'answer5': 1,
 }
 
@@ -216,13 +216,20 @@ def main():
     dict_score = {}
 
     for method in ["qcmlb", "bilinear", "skipthoughts", "bert3072", "bert768", "all"]:
+    # for method in ["bilinear", "skipthoughts", "bert3072", "bert768", "all"]:        
         sub_path  = SUB_DIR + method + ".txt"
         sub = DICT_METHOD[method]
-        for folder in folders:
-            for item in sub:
+
+        method_folders = []
+        for item in sub:
+            for folder in folders:
                 if item in folder:
-                    print('>> processing {} of {}'.format(item, method))
-                    dict_score = get_ans(dict_score, folder, df)
+                    method_folders.append(folder)
+        method_folders = list(set(method_folders))
+
+        for folder in method_folders:
+            print('>> processing {} of {}'.format(folder, method))
+            dict_score = get_ans(dict_score, folder, df)
 
         f = open(sub_path, 'w')
         for line in lines:

@@ -47,7 +47,7 @@ parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 parser.add_argument('--print-freq', '-p', default=5, type=int,
                     metavar='N', help='print frequency (default: 10)')
-parser.add_argument('--resume', default='checkpoint.pth.tar', type=str, metavar='PATH',
+parser.add_argument('--resume', default='med.pth.tar', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
@@ -68,16 +68,26 @@ def main():
     global args, best_prec1
     args = parser.parse_args()
 
-
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
+    # train_transform = transforms.Compose([
+    #     transforms.RandomResizedCrop(224),
+    #     augment_utils.PowerPILMed(),
+    #     transforms.RandomRotation((-30, 30)),
+    #     transforms.RandomHorizontalFlip(p=0.4),
+    #     transforms.RandomVerticalFlip(p=0.4),
+    #     transforms.ToTensor(),
+    #     normalize,
+    # ])
+
     train_transform = transforms.Compose([
-        transforms.RandomResizedCrop(224),
-        augment_utils.PowerPILMed(),
-        transforms.RandomRotation((-30, 30)),
-        transforms.RandomHorizontalFlip(p=0.4),
-        transforms.RandomVerticalFlip(p=0.4),
+        # transforms.RandomResizedCrop(224),
+        transforms.Resize(224),
+        # transforms.CenterCrop(args.size),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(degrees=(-20, 20)),
+        # augment_utils.PowerPILMed(),
         transforms.ToTensor(),
         normalize,
     ])
@@ -137,16 +147,15 @@ def main():
         model.cuda()
         model = torch.nn.parallel.DistributedDataParallel(model)
 
-
     criterion = nn.CrossEntropyLoss().cuda()
     if args.evaluate:
         validate(val_loader, model, criterion)
         return
-        
-    _ , _, paras_wo_bn_to_finetune = augment_utils.separate_resnet_bn_paras(model)
 
-    # optimizer = torch.optim.Adam(paras_wo_bn_to_finetune, lr=0.001)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    _, _, paras_wo_bn_to_finetune = augment_utils.separate_resnet_bn_paras(model)
+
+    optimizer = torch.optim.Adam(paras_wo_bn_to_finetune, lr=0.0001)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
     # optionally resume from a checkpoint
     if args.resume:
@@ -169,14 +178,10 @@ def main():
     # valdir = os.path.join(args.data, 'val')
 
     # define loss function (criterion) and optimizer
-    
 
     # optimizer = torch.optim.SGD(model.parameters(), args.lr,
     #                             momentum=args.momentum,
     #                             weight_decay=args.weight_decay)
-
-    
-
 
     for epoch in range(args.start_epoch, args.epochs):
         # if args.distributed:
