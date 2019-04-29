@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/med/mutan_att_train_relu_bert
+    dir_logs: logs/med/minhmul_att_train_imagenet_h64_g8_relu
 vqa:
     dataset: VQA
     dir: data/vqa_med
@@ -16,42 +16,34 @@ coco:
     mode: att
     size: 448
 model:
-    arch: MutanAtt
+    arch: MinhmulAtt
     dim_v: 2048
-    dim_q: 3072
+    dim_q: 2400
     seq2vec:
-        arch: bert
-        dir_st: data/bert
+        arch: skipthoughts
+        dir_st: data/skip-thoughts
         type: BayesianUniSkip
         dropout: 0.25
         fixed_emb: False
     attention:
-        nb_glimpses: 4
-        dim_hv: 100
-        dim_hq: 100
-        dim_mm: 200
-        R: 5
+        nb_glimpses: 8
+        dim_h: 64
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
         activation_v: relu
         activation_q: relu
-        dropout_hv: 0
-        dropout_hq: 0
+        activation_mm: relu
     fusion:
-        dim_hv: 250
-        dim_hq: 100
-        dim_mm: 200
-        R: 5
+        dim_h: 64
         dropout_v: 0.5
         dropout_q: 0.5
         activation_v: relu
         activation_q: relu
-        dropout_hv: 0
-        dropout_hq: 0
     classif:
+        activation: relu
         dropout: 0.5
 optim:
     lr: 0.0001
-    batch_size: 64
+    batch_size: 256
     epochs: 100

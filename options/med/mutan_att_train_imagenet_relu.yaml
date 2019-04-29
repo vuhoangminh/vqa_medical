@@ -39,7 +39,7 @@ model:
         dropout_hv: 0
         dropout_hq: 0
     fusion:
-        dim_hv: 250
+        dim_hv: 256
         dim_hq: 100
         dim_mm: 200
         R: 5
@@ -53,5 +53,5 @@ model:
         dropout: 0.5
 optim:
     lr: 0.0001
-    batch_size: 64
+    batch_size: 128
     epochs: 100

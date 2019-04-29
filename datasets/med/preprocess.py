@@ -88,7 +88,7 @@ def fill_holes(img):
 
 
 def remove_text(img, factor):
-    kernel = kernel = np.ones(
+    kernel = np.ones(
         (int(img.shape[0]/factor),
          int(img.shape[1]/factor)),
         np.uint8)

@@ -70,12 +70,23 @@ def process_one_method_one_dataset(folder):
 
 def get_info(name):
     name = name
-    method = "qc-mlb" if "minhmul" in name else "bilinear"
+    if "minhmul" in name:
+        method = "qc-mlb" 
+    elif "globalbilinear" in name:
+        method = "globalbilinear"
+    elif "mlb" in name:
+        method = "mlb"
+    elif "mutan" in name:
+        method = "mutan"                
+    else:
+        method = "bilinear"
     image = "imagenet" if "imagenet" in name else "classif"
     question = "bert" if "bert" in name else "skip-thoughts"
     activation = "relu" if "relu" in name else "tanh"
     if "h100" in name:
         dim_h = '100'
+    elif "h64" in name:
+        dim_h = '64'        
     elif "h200" in name:
         dim_h = '200'
     elif "h400" in name:

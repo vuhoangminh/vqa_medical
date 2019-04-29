@@ -22,103 +22,161 @@ SUB_DIR = PROJECT_DIR + "/data/vqa_med/submission/"
 path_utils.make_dir(SUB_DIR)
 
 
-SUB_QC_MLB = [
-    "minhmul_att_trainval_imagenet_h200_g4_relu",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
-    "minhmul_att_trainval_imagenet_h200_g8_relu",
-    "minhmul_att_trainval_imagenet_h400_g8_relu",
-    "minhmul_att_trainval_imagenet_h100_g8_relu",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
-]
+# SUB_QC_MLB = [
+#     "minhmul_att_trainval_imagenet_h200_g4_relu",
+#     "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased",
+#     "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased",
+#     "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
+#     "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
+#     "minhmul_att_trainval_imagenet_h200_g8_relu",
+#     "minhmul_att_trainval_imagenet_h400_g8_relu",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+# ]
 
 
-SUB_BILINEAR = [
-    "bilinear_att_trainval_imagenet_h200_g4_relu",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
-    "bilinear_att_trainval_imagenet_h100_g8_relu",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
-]
+# SUB_BILINEAR = [
+#     "bilinear_att_trainval_imagenet_h200_g4_relu",
+#     "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased",
+#     "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased",
+#     "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
+#     "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+# ]
+
+
+# SUB_SKIP_THOUGHTS = [
+#     "minhmul_att_trainval_imagenet_h200_g4_relu",
+#     "minhmul_att_trainval_imagenet_h200_g8_relu",
+#     "minhmul_att_trainval_imagenet_h400_g8_relu",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu",
+#     "bilinear_att_trainval_imagenet_h200_g4_relu",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu",
+# ]
+
+
+# SUB_BERT_3072 = [
+#     "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased",
+#     "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased",
+#     "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased",
+#     "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased",
+# ]
+
+
+# SUB_BERT_768 = [
+#     "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
+#     "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
+#     "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+#     "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
+#     "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
+#     "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+# ]
 
 
 SUB_SKIP_THOUGHTS = [
-    "minhmul_att_trainval_imagenet_h200_g4_relu",
-    "minhmul_att_trainval_imagenet_h200_g8_relu",
-    "minhmul_att_trainval_imagenet_h400_g8_relu",
-    "minhmul_att_trainval_imagenet_h100_g8_relu",
-    "bilinear_att_trainval_imagenet_h200_g4_relu",
-    "bilinear_att_trainval_imagenet_h100_g8_relu",
+    "mutan_att_trainval_imagenet_relu",
+    "mlb_att_trainval_imagenet_h200_g4_relu",
+    "mlb_att_trainval_imagenet_h100_g8_relu",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu",
 ]
 
 
 SUB_BERT_3072 = [
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased",
+    "mutan_att_trainval_imagenet_relu_bert_cased",
+    "mutan_att_trainval_imagenet_relu_bert_uncased",
+    "mlb_att_trainval_imagenet_h200_g4_relu_bert_uncased",
+    "mlb_att_trainval_imagenet_h200_g4_relu_bert_cased",
+    "mlb_att_trainval_imagenet_h100_g8_relu_bert_uncased",
+    "mlb_att_trainval_imagenet_h100_g8_relu_bert_cased",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_cased",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_cased",
 ]
 
 
 SUB_BERT_768 = [
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+    "mutan_att_trainval_imagenet_relu_bert_cased_768",
+    "mutan_att_trainval_imagenet_relu_bert_uncased_768",
+    "mlb_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
+    "mlb_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
+    "mlb_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
+    "mlb_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+]
+
+
+SUB_GLOBAL_BILINEAR = [
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_cased",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_cased",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_cased_768",    
 ]
 
 
 SUB_ALL = [
-    "minhmul_att_trainval_imagenet_h200_g4_relu",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
-    "minhmul_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
-    "minhmul_att_trainval_imagenet_h200_g8_relu",
-    "minhmul_att_trainval_imagenet_h400_g8_relu",
-    "minhmul_att_trainval_imagenet_h100_g8_relu",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
-    "minhmul_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
-    "bilinear_att_trainval_imagenet_h200_g4_relu",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
-    "bilinear_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
-    "bilinear_att_trainval_imagenet_h100_g8_relu",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
-    "bilinear_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+    "mutan_att_trainval_imagenet_relu_bert_cased_768",
+    "mutan_att_trainval_imagenet_relu_bert_uncased_768",
+    "mutan_att_trainval_imagenet_relu_bert_cased",
+    "mutan_att_trainval_imagenet_relu_bert_uncased",
+    "mutan_att_trainval_imagenet_relu",
+    "mlb_att_trainval_imagenet_h200_g4_relu",
+    "mlb_att_trainval_imagenet_h200_g4_relu_bert_uncased",
+    "mlb_att_trainval_imagenet_h200_g4_relu_bert_cased",
+    "mlb_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
+    "mlb_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
+    "mlb_att_trainval_imagenet_h100_g8_relu",
+    "mlb_att_trainval_imagenet_h100_g8_relu_bert_uncased",
+    "mlb_att_trainval_imagenet_h100_g8_relu_bert_cased",
+    "mlb_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
+    "mlb_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_cased",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_uncased_768",
+    "globalbilinear_att_trainval_imagenet_h200_g4_relu_bert_cased_768",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_cased",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_uncased_768",
+    "globalbilinear_att_trainval_imagenet_h100_g8_relu_bert_cased_768",
+]
+
+SUB_BEST = [
+    "globalbilinear_att_trainval_imagenet_h64_g8_relu",
 ]
 
 
 DICT_METHOD = {
-    "qcmlb": SUB_QC_MLB,
-    "bilinear": SUB_BILINEAR,
+    "globalbilinear": SUB_GLOBAL_BILINEAR,
     "skipthoughts": SUB_SKIP_THOUGHTS,
     "bert3072": SUB_BERT_3072,
     "bert768": SUB_BERT_768,
-    "all": SUB_ALL
+    "all": SUB_ALL,
+    "best": SUB_BEST
 }
 
 
@@ -127,6 +185,14 @@ DICT_SCORE_MAP = {
     'answer2': 27,
     'answer3': 9,
     'answer4': 3,
+    'answer5': 1,
+}
+
+DICT_SCORE_MAP = {
+    'answer1': 16,
+    'answer2': 8,
+    'answer3': 4,
+    'answer4': 2,
     'answer5': 1,
 }
 
@@ -182,7 +248,7 @@ def get_final_answer(dict_score, file_id):
     return dict_ans_score, final_answer
 
 
-def get_ans(dict_score, folder, df, fr=79, to=99):
+def get_ans(dict_score, folder, df, fr=79, to=99, weight=1):
     list_epochs = list(range(fr, to+1))
     for epoch in list_epochs:
         folder_epoch_json = "{}/epoch_{}/vqa_OpenEnded_mscoco_test2015_model_results.json".format(
@@ -198,13 +264,13 @@ def get_ans(dict_score, folder, df, fr=79, to=99):
                 ans = data[q]['answer{}'.format(a)]
 
                 if not keys_exists(dict_score, file_id):
-                    dict_score[file_id] = {'answer{}'.format(a): {ans: 1}}
+                    dict_score[file_id] = {'answer{}'.format(a): {ans: 1*weight}}
                 elif not keys_exists(dict_score, file_id, 'answer{}'.format(a)):
-                    dict_score[file_id]['answer{}'.format(a)] = {ans: 1}
+                    dict_score[file_id]['answer{}'.format(a)] = {ans: 1*weight}
                 elif not keys_exists(dict_score, file_id, 'answer{}'.format(a), ans):
-                    dict_score[file_id]['answer{}'.format(a)][ans] = 1
+                    dict_score[file_id]['answer{}'.format(a)][ans] = 1*weight
                 else:
-                    dict_score[file_id]['answer{}'.format(a)][ans] += 1
+                    dict_score[file_id]['answer{}'.format(a)][ans] += 1*weight
     return dict_score
 
 
@@ -215,21 +281,23 @@ def main():
         lines = f.readlines()
     dict_score = {}
 
-    for method in ["qcmlb", "bilinear", "skipthoughts", "bert3072", "bert768", "all"]:
-    # for method in ["bilinear", "skipthoughts", "bert3072", "bert768", "all"]:        
+    # for method in ["qcmlb", "bilinear", "skipthoughts", "bert3072", "bert768", "all"]:
+    for method in ["best", "globalbilinear", "skipthoughts", "bert3072", "bert768", "all"]:     
+    # for method in []:
         sub_path  = SUB_DIR + method + ".txt"
         sub = DICT_METHOD[method]
 
         method_folders = []
         for item in sub:
             for folder in folders:
-                if item in folder:
+                if item == path_utils.get_filename_without_extension(folder):
                     method_folders.append(folder)
         method_folders = list(set(method_folders))
 
         for folder in method_folders:
             print('>> processing {} of {}'.format(folder, method))
-            dict_score = get_ans(dict_score, folder, df)
+            weight = 1 if "bert" in folder else 5
+            dict_score = get_ans(dict_score, folder, df, weight=weight)
 
         f = open(sub_path, 'w')
         for line in lines:
