@@ -64,20 +64,19 @@ def process_one_method_one_dataset(folder):
         std = np.std(list_acc1)
     else:
         mean, std, to = 0, 0, 0
-
     return mean, std, to
 
 
 def get_info(name):
     name = name
     if "minhmul" in name:
-        method = "qc-mlb" 
+        method = "qc-mlb"
     elif "globalbilinear" in name:
         method = "globalbilinear"
     elif "mlb" in name:
         method = "mlb"
     elif "mutan" in name:
-        method = "mutan"                
+        method = "mutan"
     else:
         method = "bilinear"
     image = "imagenet" if "imagenet" in name else "classif"
@@ -86,7 +85,7 @@ def get_info(name):
     if "h100" in name:
         dim_h = '100'
     elif "h64" in name:
-        dim_h = '64'        
+        dim_h = '64'
     elif "h200" in name:
         dim_h = '200'
     elif "h400" in name:
@@ -118,17 +117,17 @@ def main():
             info = get_info(path_utils.get_filename_without_extension(folder))
             # if to > 30:
             df = df.append(pd.DataFrame({'name':        [info[0]],
-                                            'method':      [info[1]],
-                                            'image':       [info[2]],
-                                            'question':    [info[3]],
-                                            'dim_h':       [info[4]],
-                                            'nb_glimpses': [info[5]],
-                                            'activation':  [info[6]],
-                                            'epoch_max':   [to],
-                                            'mean':        [mean.round(2)],
-                                            'std':         [std.round(2)]
-                                            }),
-                            ignore_index=True)
+                                         'method':      [info[1]],
+                                         'image':       [info[2]],
+                                         'question':    [info[3]],
+                                         'dim_h':       [info[4]],
+                                         'nb_glimpses': [info[5]],
+                                         'activation':  [info[6]],
+                                         'epoch_max':   [to],
+                                         'mean':        [mean.round(2)],
+                                         'std':         [std.round(2)]
+                                         }),
+                           ignore_index=True)
 
         print(df)
         df.to_csv(df_path, index=False)
