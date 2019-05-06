@@ -29,20 +29,21 @@ def get_val_acc1_from_json_old(json_path, num=20):
     return list_acc1, to
 
 
-# Function returns N largest elements
-def Nmaxelements(list1, N):
-    final_list = []
-    for i in range(0, N):
-        max1 = 0
-        for j in range(len(list1)):
-            if list1[j] > max1:
-                max1 = list1[j]
-        list1.remove(max1)
-        final_list.append(max1)
-    return final_list
-
-
 def get_val_acc1_from_json(json_path, num=20):
+    with open(json_path) as f:
+        data = json.load(f)
+    val = data["logged"]["val"]["acc1"]
+    # pprint(val)
+    list_acc1 = []
+    to = len(val)
+    fr = max((to + 1 - num, 1))
+    for i in range(fr, to+1):
+        acc1 = val["{}".format(str(i))]
+        list_acc1.append(acc1)
+    return list_acc1, to
+
+
+def get_val_acc1_from_json_new(json_path, num=20):
     with open(json_path) as f:
         data = json.load(f)
     val = data["logged"]["val"]["acc1"]
@@ -54,6 +55,19 @@ def get_val_acc1_from_json(json_path, num=20):
             to = int(key)
     list_acc1 = Nmaxelements(list(val.values()), N=num)
     return list_acc1, to
+
+
+# Function returns N largest elements
+def Nmaxelements(list1, N):
+    final_list = []
+    for i in range(0, N):
+        max1 = 0
+        for j in range(len(list1)):
+            if list1[j] > max1:
+                max1 = list1[j]
+        list1.remove(max1)
+        final_list.append(max1)
+    return final_list
 
 
 def process_one_method_one_dataset(folder):
