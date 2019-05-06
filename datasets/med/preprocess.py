@@ -1,5 +1,7 @@
 import cv2
 import os
+if os.path.isdir("C:\\Users\\minhm\\Documents\\GitHub\\vqa_idrid"):
+    sys.path.append("C:\\Users\\minhm\\Documents\\GitHub\\vqa_idrid")
 import numpy as np
 import datasets.utils.paths_utils as path_utils
 import glob

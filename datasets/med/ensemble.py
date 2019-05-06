@@ -92,6 +92,10 @@ BASE_EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features_base.pickle"
 CASED_EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features_cased.pickle"
 
 
+def ensemble(method="avg"):
+    
+
+
 def main():
     global args, best_acc1
     args = parser.parse_args()

@@ -240,7 +240,7 @@ def sen2vec(questions, bert_model="bert-base-multilingual-uncased", layers="-1,-
                 v_q = all_encoder_layers[-i][:, 0, :]
             else:
                 v_q = torch.cat((v_q, all_encoder_layers[-i][:, 0, :]), dim=1)
-        v_q /= 4
+        v_q = v_q
 
         # print(v_q)
     return v_q
