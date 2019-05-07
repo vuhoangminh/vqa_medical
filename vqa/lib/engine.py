@@ -89,7 +89,7 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
     logger.log_meters('train', n=epoch)
 
 
-def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, dict=None, bert_dim=3072):
+def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, dict=None, bert_dim=3072, is_return_prob=False):
     results = []
     bleu_score = 0
     n_sample = 0
@@ -175,12 +175,26 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
             bleu_score += bleu_batch*batch_size
             n_sample += batch_size
 
+
+            # compute probabilities
+            if is_return_prob:
+                sm = torch.nn.Softmax() 
+                if i == 0:
+                    prob = sm(output).cpu()
+                else:
+                    prob = torch.cat((prob, sm(output).cpu()), 0)
+
+
     bleu_score = bleu_score / n_sample
     print(' * Bleu@ {bleu_score:.3f} Acc@1 {acc1.avg:.3f} Acc@2 {acc2.avg:.3f}'
           .format(bleu_score=bleu_score*100, acc1=meters['acc1'], acc2=meters['acc2']))
 
     logger.log_meters('val', n=epoch)
-    return meters['acc1'].avg, results
+
+    if is_return_prob:
+        return meters['acc1'].avg, results, prob
+    else:
+        return meters['acc1'].avg, results
 
 
 def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None, bert_dim=3072):

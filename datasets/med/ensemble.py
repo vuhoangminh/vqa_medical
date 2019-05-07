@@ -21,67 +21,130 @@ import vqa.datasets as datasets
 import vqa.models as models
 
 
-parser = argparse.ArgumentParser(
-    description='Train/Evaluate models',
-    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-##################################################
-# yaml options file contains all default choices #
-# parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
-#                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/med/bilinear_att_train_imagenet_h200_g4.yaml', type=str,
-                    help='path to a yaml options file')
-################################################
-# change cli options to modify default choices #
-# logs options
-parser.add_argument('--dir_logs',
-                    default='logs/med/train/globalbilinear_att_train_imagenet_h200_g4',
-                    type=str, help='dir logs')
-# data options
-parser.add_argument('--vqa_trainsplit', type=str,
-                    choices=['train', 'trainval'], default="train")
-# model options
-parser.add_argument('--arch', choices=models.model_names,
-                    help='vqa model architecture: ' +
-                    ' | '.join(models.model_names))
-parser.add_argument('--st_type',
-                    help='skipthoughts type')
-parser.add_argument('--st_dropout', type=float)
-parser.add_argument('--st_fixed_emb', default=None, type=utils.str2bool,
-                    help='backprop on embedding')
-# bert options
-parser.add_argument('--bert_model', default="bert-base-multilingual-uncased",
-                    help='bert model: bert-base-uncased | bert-base-multilingual-uncased | bert-base-multilingual-cased')
-# image options
-parser.add_argument('--is_augment_image', default='1',
-                    help='whether to augment images at the beginning of every epoch?')
-# optim options
-parser.add_argument('-lr', '--learning_rate', type=float,
-                    help='initial learning rate')
-parser.add_argument('-b', '--batch_size', type=int,
-                    help='mini-batch size')
-parser.add_argument('--epochs', type=int,
-                    help='number of total epochs to run')
-# options not in yaml file
-parser.add_argument('--start_epoch', default=0, type=int,
-                    help='manual epoch number (useful on restarts)')
-parser.add_argument('--resume', default='best', type=str,
-                    help='path to latest checkpoint')
-parser.add_argument('--save_model', default=True, type=utils.str2bool,
-                    help='able or disable save model and optim state')
-parser.add_argument('--save_all_from', type=int,
-                    help='''delete the preceding checkpoint until an epoch,'''
-                         ''' then keep all (useful to save disk space)')''')
-parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
-                    help='evaluate model on validation and test set', default=True)
-parser.add_argument('-j', '--workers', default=0, type=int,
-                    help='number of data loading workers')
-parser.add_argument('--print_freq', '-p', default=10, type=int,
-                    help='print frequency')
-################################################
-parser.add_argument('-ho', '--help_opt', dest='help_opt', action='store_true',
-                    help='show selected options before running')
+SUB_SKIP_THOUGHTS = [
+    "mutan_att_train_imagenet_relu",
+    "mlb_att_train_imagenet_h200_g4_relu",
+    "mlb_att_train_imagenet_h100_g8_relu",
+    "globalbilinear_att_train_imagenet_h200_g4_relu",
+    "globalbilinear_att_train_imagenet_h100_g8_relu",
+]
 
-best_acc1 = 0
+
+SUB_BERT_3072 = [
+    "mutan_att_train_imagenet_relu_bert_cased",
+    "mutan_att_train_imagenet_relu_bert_uncased",
+    "mlb_att_train_imagenet_h200_g4_relu_bert_uncased",
+    "mlb_att_train_imagenet_h200_g4_relu_bert_cased",
+    "mlb_att_train_imagenet_h100_g8_relu_bert_uncased",
+    "mlb_att_train_imagenet_h100_g8_relu_bert_cased",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_uncased",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_cased",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_uncased",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_cased",
+]
+
+
+SUB_BERT_768 = [
+    "mutan_att_train_imagenet_relu_bert_cased_768",
+    "mutan_att_train_imagenet_relu_bert_uncased_768",
+    "mlb_att_train_imagenet_h200_g4_relu_bert_uncased_768",
+    "mlb_att_train_imagenet_h200_g4_relu_bert_cased_768",
+    "mlb_att_train_imagenet_h100_g8_relu_bert_uncased_768",
+    "mlb_att_train_imagenet_h100_g8_relu_bert_cased_768",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_uncased_768",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_cased_768",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_uncased_768",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_cased_768",
+]
+
+
+SUB_GLOBAL_BILINEAR = [
+    "globalbilinear_att_train_imagenet_h200_g4_relu",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_uncased",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_cased",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_uncased_768",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_cased_768",
+    "globalbilinear_att_train_imagenet_h100_g8_relu",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_uncased",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_cased",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_uncased_768",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_cased_768",
+]
+
+
+SUB_ALL = [
+    "mutan_att_train_imagenet_relu_bert_cased_768",
+    "mutan_att_train_imagenet_relu_bert_uncased_768",
+    "mutan_att_train_imagenet_relu_bert_cased",
+    "mutan_att_train_imagenet_relu_bert_uncased",
+    "mutan_att_train_imagenet_relu",
+    "mlb_att_train_imagenet_h200_g4_relu",
+    "mlb_att_train_imagenet_h200_g4_relu_bert_uncased",
+    "mlb_att_train_imagenet_h200_g4_relu_bert_cased",
+    "mlb_att_train_imagenet_h200_g4_relu_bert_uncased_768",
+    "mlb_att_train_imagenet_h200_g4_relu_bert_cased_768",
+    "mlb_att_train_imagenet_h100_g8_relu",
+    "mlb_att_train_imagenet_h100_g8_relu_bert_uncased",
+    "mlb_att_train_imagenet_h100_g8_relu_bert_cased",
+    "mlb_att_train_imagenet_h100_g8_relu_bert_uncased_768",
+    "mlb_att_train_imagenet_h100_g8_relu_bert_cased_768",
+    "globalbilinear_att_train_imagenet_h200_g4_relu",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_uncased",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_cased",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_uncased_768",
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_cased_768",
+    "globalbilinear_att_train_imagenet_h100_g8_relu",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_uncased",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_cased",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_uncased_768",
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_cased_768",
+    "globalbilinear_att_train_imagenet_h64_g8_relu",
+]
+
+SUB_BEST = [
+    "globalbilinear_att_train_imagenet_h64_g8_relu",
+]
+
+
+DICT_METHOD = {
+    "globalbilinear": SUB_GLOBAL_BILINEAR,
+    "skipthoughts": SUB_SKIP_THOUGHTS,
+    "bert3072": SUB_BERT_3072,
+    "bert768": SUB_BERT_768,
+    "all": SUB_ALL,
+    "best": SUB_BEST
+}
+
+
+DICT_SCORE = {
+    "mutan_att_train_imagenet_relu_bert_cased_768": 57.75,
+    "mutan_att_train_imagenet_relu_bert_uncased_768": 58.35,
+    "mutan_att_train_imagenet_relu_bert_cased": 58.42,
+    "mutan_att_train_imagenet_relu_bert_uncased": 58.88,
+    "mutan_att_train_imagenet_relu": 59.64,
+    "mlb_att_train_imagenet_h200_g4_relu": 59.9,
+    "mlb_att_train_imagenet_h200_g4_relu_bert_uncased": 59.15,
+    "mlb_att_train_imagenet_h200_g4_relu_bert_cased": 58.45,
+    "mlb_att_train_imagenet_h200_g4_relu_bert_uncased_768": 59.45,
+    "mlb_att_train_imagenet_h200_g4_relu_bert_cased_768": 57.57,
+    "mlb_att_train_imagenet_h100_g8_relu": 60.02,
+    "mlb_att_train_imagenet_h100_g8_relu_bert_uncased": 58.74,
+    "mlb_att_train_imagenet_h100_g8_relu_bert_cased": 58.73,
+    "mlb_att_train_imagenet_h100_g8_relu_bert_uncased_768": 60.09,
+    "mlb_att_train_imagenet_h100_g8_relu_bert_cased_768": 58.56,
+    "globalbilinear_att_train_imagenet_h200_g4_relu": 59.62,
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_uncased": 58.83,
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_cased": 58.97,
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_uncased_768": 59.72,
+    "globalbilinear_att_train_imagenet_h200_g4_relu_bert_cased_768": 59.12,
+    "globalbilinear_att_train_imagenet_h100_g8_relu": 59.85,
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_uncased": 59.1,
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_cased": 59.33,
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_uncased_768": 60.09,
+    "globalbilinear_att_train_imagenet_h100_g8_relu_bert_cased_768": 59.62,
+    "globalbilinear_att_train_imagenet_h64_g8_relu": 60.12,
+    "globalbilinear_att_train_imagenet_h100_g8": 60.5,
+}
 
 
 CURRENT_WORKING_DIR = os.path.realpath(__file__)
@@ -91,18 +154,101 @@ EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features.pickle"
 BASE_EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features_base.pickle"
 CASED_EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features_cased.pickle"
 
+SUB_DIR = PROJECT_DIR + "/data/vqa_med/submission/"
+path_utils.make_dir(SUB_DIR)
 
-def ensemble(method="avg"):
-    
 
+def compute_prob_one_model(model_name, vqa_trainsplit="train"):
 
-def main():
-    global args, best_acc1
+    parser = argparse.ArgumentParser(
+        description='Train/Evaluate models',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    ##################################################
+    # yaml options file contains all default choices #
+    # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
+    #                     help='path to a yaml options file')
+    parser.add_argument('--path_opt', default='options/med/bilinear_att_train_imagenet_h200_g4.yaml', type=str,
+                        help='path to a yaml options file')
+    ################################################
+    # change cli options to modify default choices #
+    # logs options
+    parser.add_argument('--dir_logs',
+                        default='logs/med/train/globalbilinear_att_train_imagenet_h200_g4',
+                        type=str, help='dir logs')
+    # data options
+    parser.add_argument('--vqa_trainsplit', type=str,
+                        choices=['train', 'trainval'], default=vqa_trainsplit)
+    # model options
+    parser.add_argument('--arch', choices=models.model_names,
+                        help='vqa model architecture: ' +
+                        ' | '.join(models.model_names))
+    parser.add_argument('--st_type',
+                        help='skipthoughts type')
+    parser.add_argument('--st_dropout', type=float)
+    parser.add_argument('--st_fixed_emb', default=None, type=utils.str2bool,
+                        help='backprop on embedding')
+    # bert options
+    parser.add_argument('--bert_model', default="bert-base-multilingual-uncased",
+                        help='bert model: bert-base-uncased | bert-base-multilingual-uncased | bert-base-multilingual-cased')
+    # image options
+    parser.add_argument('--is_augment_image', default='1',
+                        help='whether to augment images at the beginning of every epoch?')
+    # optim options
+    parser.add_argument('-lr', '--learning_rate', type=float,
+                        help='initial learning rate')
+    parser.add_argument('-b', '--batch_size', type=int,
+                        help='mini-batch size')
+    parser.add_argument('--epochs', type=int,
+                        help='number of total epochs to run')
+    # options not in yaml file
+    parser.add_argument('--start_epoch', default=0, type=int,
+                        help='manual epoch number (useful on restarts)')
+    parser.add_argument('--resume', default='best', type=str,
+                        help='path to latest checkpoint')
+    parser.add_argument('--save_model', default=True, type=utils.str2bool,
+                        help='able or disable save model and optim state')
+    parser.add_argument('--save_all_from', type=int,
+                        help='''delete the preceding checkpoint until an epoch,'''
+                        ''' then keep all (useful to save disk space)')''')
+    parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
+                        help='evaluate model on validation and test set', default=True)
+    parser.add_argument('-j', '--workers', default=0, type=int,
+                        help='number of data loading workers')
+    parser.add_argument('--print_freq', '-p', default=10, type=int,
+                        help='print frequency')
+    ################################################
+    parser.add_argument('-ho', '--help_opt', dest='help_opt', action='store_true',
+                        help='show selected options before running')
     args = parser.parse_args()
+
+    args.dir_logs = "logs/med/train/{}".format(model_name)
+    if "globalbilinear" in model_name:
+        path_opt = model_name.replace("globalbilinear", "bilinear")
+        if "_cased" in path_opt:
+            path_opt = path_opt.replace("_cased", "")
+        if "_uncased" in path_opt:
+            path_opt = path_opt.replace("_uncased", "")
+    elif "_cased_768" in model_name:
+        path_opt = model_name.replace("_cased_768", "_768")
+    elif "_uncased_768" in model_name:
+        path_opt = model_name.replace("_uncased_768", "_768")
+    elif "_cased" in model_name and "768" not in model_name:
+        path_opt = model_name.replace("_cased", "")
+    elif "_uncased" in model_name and "768" not in model_name:
+        path_opt = model_name.replace("_uncased", "")
+    else:
+        path_opt = model_name
+    args.path_opt = "{}/{}.yaml".format(args.dir_logs, path_opt)
 
     #########################################################################################
     # Create options
     #########################################################################################
+    if "_cased" in model_name:
+        args.bert_model = "bert-base-multilingual-cased"
+    elif "_uncased" in model_name:
+        args.bert_model = "bert-base-multilingual-uncased"
+
     if args.bert_model == "bert-base-uncased":
         question_features_path = BASE_EXTRACTED_QUES_FEATURES_PATH
     elif args.bert_model == "bert-base-multilingual-cased":
@@ -226,22 +372,72 @@ def main():
             options['logs']['dir_logs'], 'logger.json')
 
         if options['vqa']['trainsplit'] == 'train':
-            acc1, val_results = engine.validate(val_loader, model, criterion,
-                                                exp_logger, args.start_epoch, args.print_freq)
-            # save results and compute OpenEnd accuracy
-            exp_logger.to_json(path_logger_json)
-            save_results(val_results, args.start_epoch, valset.split_name(),
-                         options['logs']['dir_logs'], options['vqa']['dir'])
+            acc1, val_results, prob = engine.validate(val_loader, model, criterion,
+                                                      exp_logger, args.start_epoch,
+                                                      args.print_freq,
+                                                      dict=io_utils.read_pickle(
+                                                          question_features_path),
+                                                      bert_dim=options["model"]["dim_q"],
+                                                      is_return_prob=True)
+        return prob, val_loader
 
-        test_results, testdev_results = engine.test(test_loader, model, exp_logger,
-                                                    args.start_epoch, args.print_freq)
-        # save results and DOES NOT compute OpenEnd accuracy
-        exp_logger.to_json(path_logger_json)
-        save_results(test_results, args.start_epoch, testset.split_name(),
-                     options['logs']['dir_logs'], options['vqa']['dir'])
-        save_results(testdev_results, args.start_epoch, testset.split_name(testdev=True),
-                     options['logs']['dir_logs'], options['vqa']['dir'])
-        return
+
+# # method: avg, weighted, top predcition
+def ensemble(dict_prob, val_loader, dict_runs, save_path, method="avg"):
+    if method == "avg":
+        i = 0
+        for key in dict_runs:
+            value = dict_prob[key]
+            i += 1
+            if i == 1:
+                prob = value
+            else:
+                prob += value
+        prob /= len(dict_runs)
+
+    elif method == "weighted":
+        i = 0
+        sum_weight = 0
+        for key in dict_runs:
+            value = dict_prob[key]
+            i += 1
+            weight = DICT_SCORE[key]
+            if i == 1:
+                prob = weight*value
+            else:
+                prob += weight*value
+            sum_weight += weight
+        prob /= sum_weight
+
+    results = []
+    count = 0
+    for i, sample in enumerate(val_loader):
+        batch_size = len(sample["answer"])
+        prob_qi = prob[count:count+batch_size, :]
+        for j in range(len(sample["answer"])):
+            # print(j)
+            values, indices = prob_qi[j].max(0)
+            item = {'question_id': sample['question_id'][j],
+                    'answer': val_loader.dataset.aid_to_ans[indices]}
+            results.append(item)
+        count += batch_size
+
+    with open(save_path, 'w') as handle:
+        json.dump(results, handle)
+
+
+def main():
+    dict_prob = {}
+    for key, value in DICT_SCORE.items():
+        prob, val_loader = compute_prob_one_model(model_name=key)
+        dict_prob[key] = prob
+
+    for method in ["avg", "weighted"]:
+        for ensem in ["best", "globalbilinear", "skipthoughts", "bert3072", "bert768", "all"]:
+            sub_path = "{}ensemble/valid/{}_{}.json".format(
+                SUB_DIR, ensem, method)
+            sub = DICT_METHOD[ensem]
+            ensemble(dict_prob, val_loader, sub, sub_path, method="avg")
 
 
 def make_meters():
