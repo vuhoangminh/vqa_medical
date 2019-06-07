@@ -43,7 +43,11 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
         target_answer = Variable(sample['answer'].cuda())
 
         # compute output
-        output, hidden = model(input_visual, input_question)
+        try:
+            output, hidden = model(input_visual, input_question)
+        except:
+            output = model(input_visual, input_question)
+        
         torch.cuda.synchronize()
         loss = criterion(output, target_answer)
         meters['loss'].update(loss.item(), n=batch_size)
@@ -197,7 +201,7 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
         return meters['acc1'].avg, results
 
 
-def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None, bert_dim=3072):
+def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None, bert_dim=3072, is_return_prob=False):
     results = []
     testdev_results = []
 
@@ -254,5 +258,17 @@ def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None, bert_
                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})'.format(
                       i, len(loader), batch_time=meters['batch_time']))
 
+        # compute probabilities
+        if is_return_prob:
+            sm = torch.nn.Softmax() 
+            if i == 0:
+                prob = sm(output).cpu()
+            else:
+                prob = torch.cat((prob, sm(output).cpu()), 0)                      
+
     logger.log_meters('test', n=epoch)
-    return results, testdev_results
+
+    if is_return_prob:
+        return results, testdev_results, prob
+    else:
+        return results, testdev_results

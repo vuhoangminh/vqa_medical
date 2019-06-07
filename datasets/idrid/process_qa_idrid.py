@@ -175,7 +175,7 @@ def main():
         help='Padding ; Options: right (finish by zeros) | left (begin by zeros)'
     )
     parser.add_argument('--dir',
-        default='data/vqa_breast',
+        default='data/vqa_idrid',
         type=str
     )
     args = parser.parse_args()

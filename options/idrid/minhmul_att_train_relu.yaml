@@ -2,7 +2,7 @@ logs:
     dir_logs: logs/breast/minhmul_att_train_relu
 vqa:
     dataset: VQA
-    dir: data/vqa_breast
+    dir: data/vqa_idrid
     trainsplit: train
     nans: 844
     maxlength: 26
@@ -11,8 +11,8 @@ vqa:
     pad: right
     samplingans: True
 coco:
-    dir: data/raw/breast-cancer/preprocessed/WSI
-    arch: resnet152_breast
+    dir: data/raw/idrid
+    arch: resnet152_idrid
     mode: att
     size: 448
 model:

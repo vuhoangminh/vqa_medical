@@ -9,10 +9,12 @@ from pprint import pprint
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
+import pandas as pd
 
 import vqa.lib.utils as gen_utils
 import datasets.utils.paths_utils as path_utils
 import datasets.utils.io_utils as io_utils
+import datasets.utils.metrics_utils as metrics_utils
 import vqa.lib.engine as engine
 import vqa.lib.utils as utils
 import vqa.lib.logger as logger
@@ -117,21 +119,16 @@ DICT_METHOD = {
 
 
 DICT_SCORE = {
-    "mutan_att_train_imagenet_relu_bert_cased_768": 57.75,
-    "mutan_att_train_imagenet_relu_bert_uncased_768": 58.35,
-    "mutan_att_train_imagenet_relu_bert_cased": 58.42,
-    "mutan_att_train_imagenet_relu_bert_uncased": 58.88,
-    "mutan_att_train_imagenet_relu": 59.64,
     "mlb_att_train_imagenet_h200_g4_relu": 59.9,
-    "mlb_att_train_imagenet_h200_g4_relu_bert_uncased": 59.15,
-    "mlb_att_train_imagenet_h200_g4_relu_bert_cased": 58.45,
-    "mlb_att_train_imagenet_h200_g4_relu_bert_uncased_768": 59.45,
-    "mlb_att_train_imagenet_h200_g4_relu_bert_cased_768": 57.57,
+    # "mlb_att_train_imagenet_h200_g4_relu_bert_uncased": 59.15,
+    # "mlb_att_train_imagenet_h200_g4_relu_bert_cased": 58.45,
+    # "mlb_att_train_imagenet_h200_g4_relu_bert_uncased_768": 59.45,
+    # "mlb_att_train_imagenet_h200_g4_relu_bert_cased_768": 57.57,
     "mlb_att_train_imagenet_h100_g8_relu": 60.02,
-    "mlb_att_train_imagenet_h100_g8_relu_bert_uncased": 58.74,
-    "mlb_att_train_imagenet_h100_g8_relu_bert_cased": 58.73,
-    "mlb_att_train_imagenet_h100_g8_relu_bert_uncased_768": 60.09,
-    "mlb_att_train_imagenet_h100_g8_relu_bert_cased_768": 58.56,
+    # "mlb_att_train_imagenet_h100_g8_relu_bert_uncased": 58.74,
+    # "mlb_att_train_imagenet_h100_g8_relu_bert_cased": 58.73,
+    # "mlb_att_train_imagenet_h100_g8_relu_bert_uncased_768": 60.09,
+    # "mlb_att_train_imagenet_h100_g8_relu_bert_cased_768": 58.56,
     "globalbilinear_att_train_imagenet_h200_g4_relu": 59.62,
     "globalbilinear_att_train_imagenet_h200_g4_relu_bert_uncased": 58.83,
     "globalbilinear_att_train_imagenet_h200_g4_relu_bert_cased": 58.97,
@@ -143,7 +140,12 @@ DICT_SCORE = {
     "globalbilinear_att_train_imagenet_h100_g8_relu_bert_uncased_768": 60.09,
     "globalbilinear_att_train_imagenet_h100_g8_relu_bert_cased_768": 59.62,
     "globalbilinear_att_train_imagenet_h64_g8_relu": 60.12,
-    "globalbilinear_att_train_imagenet_h100_g8": 60.5,
+    # "globalbilinear_att_train_imagenet_h100_g8": 60.5,
+    # "mutan_att_train_imagenet_relu_bert_cased_768": 57.75,
+    # "mutan_att_train_imagenet_relu_bert_uncased_768": 58.35,
+    # "mutan_att_train_imagenet_relu_bert_cased": 58.42,
+    # "mutan_att_train_imagenet_relu_bert_uncased": 58.88,
+    "mutan_att_train_imagenet_relu": 59.64,
 }
 
 
@@ -156,6 +158,10 @@ CASED_EXTRACTED_QUES_FEATURES_PATH = RAW_DIR + "question_features_cased.pickle"
 
 SUB_DIR = PROJECT_DIR + "/data/vqa_med/submission/"
 path_utils.make_dir(SUB_DIR)
+TEST_DIR = PROJECT_DIR + \
+    "/data/raw/vqa_med/VQAMed2019Test/VQAMed2019_Test_ImageList.txt"
+
+PROCESSED_QA_PER_QUESTION_PATH = RAW_DIR + "med_qa_per_question.csv"    
 
 
 def compute_prob_one_model(model_name, vqa_trainsplit="train"):
@@ -222,7 +228,10 @@ def compute_prob_one_model(model_name, vqa_trainsplit="train"):
                         help='show selected options before running')
     args = parser.parse_args()
 
-    args.dir_logs = "logs/med/train/{}".format(model_name)
+    if vqa_trainsplit == "train":
+        args.dir_logs = "logs/med/train/{}".format(model_name)
+    else:
+        args.dir_logs = "logs/med/trainval/{}".format(model_name)
     if "globalbilinear" in model_name:
         path_opt = model_name.replace("globalbilinear", "bilinear")
         if "_cased" in path_opt:
@@ -239,6 +248,7 @@ def compute_prob_one_model(model_name, vqa_trainsplit="train"):
         path_opt = model_name.replace("_uncased", "")
     else:
         path_opt = model_name
+    path_opt = path_opt.replace("_trainval_", "_train_")
     args.path_opt = "{}/{}.yaml".format(args.dir_logs, path_opt)
 
     #########################################################################################
@@ -379,11 +389,24 @@ def compute_prob_one_model(model_name, vqa_trainsplit="train"):
                                                           question_features_path),
                                                       bert_dim=options["model"]["dim_q"],
                                                       is_return_prob=True)
-        return prob, val_loader
+        else:
+            test_results, testdev_results, prob = engine.test(test_loader, model, exp_logger,
+                                                              1, args.print_freq,
+                                                              dict=io_utils.read_pickle(
+                                                                  question_features_path),
+                                                              bert_dim=options["model"]["dim_q"],
+                                                              is_return_prob=True)
+
+        torch.cuda.empty_cache()
+
+        if vqa_trainsplit == "train":
+            return prob, val_loader
+        else:
+            return prob, test_loader
 
 
 # # method: avg, weighted, top predcition
-def ensemble(dict_prob, val_loader, dict_runs, save_path, method="avg"):
+def ensemble(dict_prob, val_loader, dict_runs, save_path, method="avg", vqa_trainsplit="train"):
     if method == "avg":
         i = 0
         for key in dict_runs:
@@ -395,7 +418,7 @@ def ensemble(dict_prob, val_loader, dict_runs, save_path, method="avg"):
                 prob += value
         prob /= len(dict_runs)
 
-    elif method == "weighted":
+    else:
         i = 0
         sum_weight = 0
         for key in dict_runs:
@@ -410,34 +433,107 @@ def ensemble(dict_prob, val_loader, dict_runs, save_path, method="avg"):
         prob /= sum_weight
 
     results = []
+    pred_dict = {}
+    gt_dict = {}
+    acc = 0
     count = 0
     for i, sample in enumerate(val_loader):
-        batch_size = len(sample["answer"])
+        batch_size = len(sample["question_id"])
         prob_qi = prob[count:count+batch_size, :]
-        for j in range(len(sample["answer"])):
-            # print(j)
+
+        if vqa_trainsplit == "train":
+            target_answer = sample['answer'].data.cpu()
+        for j in range(len(sample["question_id"])):
             values, indices = prob_qi[j].max(0)
             item = {'question_id': sample['question_id'][j],
                     'answer': val_loader.dataset.aid_to_ans[indices]}
             results.append(item)
+
+            pred_dict[sample['question_id'][j]
+                      ] = val_loader.dataset.aid_to_ans[indices]
+
+            if vqa_trainsplit == "train":
+                try:
+                    gt_dict[sample['question_id'][j]
+                            ] = val_loader.dataset.aid_to_ans[target_answer[j]]
+                except:
+                    gt_dict[sample['question_id'][j]
+                            ] = val_loader.dataset.aid_to_ans[0]
+
+                if pred_dict[sample['question_id'][j]] == gt_dict[sample['question_id'][j]]:
+                    acc += 1
+
         count += batch_size
+
+    if vqa_trainsplit == "train":
+        acc = round(acc/count*100, 2)
+        bleu = round(metrics_utils.compute_bleu_score(
+            pred_dict, gt_dict)*100, 2)
 
     with open(save_path, 'w') as handle:
         json.dump(results, handle)
 
+    if vqa_trainsplit == "train":
+        return acc, bleu
+    else:
+        return results
+
+
+def get_info(df, file_id):
+    index = df.index[df['file_id'] == file_id].tolist()
+    row = df.iloc[index[0]]
+    return row
+
 
 def main():
     dict_prob = {}
+    df = pd.read_csv(PROCESSED_QA_PER_QUESTION_PATH)
+    # for key, value in DICT_SCORE.items():
+    #     prob, val_loader = compute_prob_one_model(model_name=key)
+    #     dict_prob[key] = prob.detach()
+
+    # for method in ["avg", "weighted"]:
+    #     for ensem in ["best", "globalbilinear", "skipthoughts", "bert3072", "bert768", "all"]:
+    #         sub_path = "{}ensemble/valid/{}_{}.json".format(
+    #             SUB_DIR, ensem, method)
+    #         sub = DICT_METHOD[ensem]
+    #         acc, bleu = ensemble(dict_prob, val_loader,
+    #                              sub, sub_path, method=method,
+    #                              vqa_trainsplit="train")
+
+    #         print(method, ensem, acc, bleu)
+
     for key, value in DICT_SCORE.items():
-        prob, val_loader = compute_prob_one_model(model_name=key)
-        dict_prob[key] = prob
+        prob, test_loader = compute_prob_one_model(model_name=key.replace(
+            "_train_", "_trainval_"), vqa_trainsplit="trainval")
+        dict_prob[key] = prob.detach()
+        # del prob, test_loader
 
     for method in ["avg", "weighted"]:
-        for ensem in ["best", "globalbilinear", "skipthoughts", "bert3072", "bert768", "all"]:
-            sub_path = "{}ensemble/valid/{}_{}.json".format(
+        for ensem in ["globalbilinear", "skipthoughts"]:
+            sub_path = "{}ensemble/test/{}_{}.txt".format(
                 SUB_DIR, ensem, method)
+            path_utils.make_dir("{}ensemble/test".format(SUB_DIR))
             sub = DICT_METHOD[ensem]
-            ensemble(dict_prob, val_loader, sub, sub_path, method="avg")
+            results = ensemble(dict_prob, test_loader,
+                               sub, sub_path, method=method,
+                               vqa_trainsplit="trainval")
+
+            with open(TEST_DIR, encoding='UTF-8') as f:
+                lines = f.readlines()
+
+            f = open(sub_path, 'w')
+            count = 0
+            for line in lines:
+                file_id = line.split('\n')[0]
+                row_info = get_info(df, file_id + ".jpg")
+                question_id = row_info["question_id"] 
+                f.write('{}|{}\n'.format(file_id, results[count]["answer"]))
+                count += 1
+            f.close()  # you can omit in most cases as the destructor will call it
+
+
+
 
 
 def make_meters():

@@ -157,9 +157,9 @@ def process(index, img_dirs, is_draw=False):
         h3 = stack_2_images_horizontally(
             img, final)
 
-        # cv2.imshow(path_utils.get_filename_without_extension(img_path), numpy_vertical)
-        # cv2.imshow("Done", numpy_vertical)
-        cv2.imshow('Done', h3)
+        cv2.imshow(path_utils.get_filename_without_extension(img_path), numpy_vertical)
+        cv2.imshow("Done", numpy_vertical)
+        # cv2.imshow('Done', h3)
         cv2.waitKey(0)
 
     return final
@@ -173,7 +173,7 @@ def main():
     shuffle(img_dirs)
 
     for index in range(3000):
-        process(index, img_dirs)
+        process(index, img_dirs, is_draw=True)
 
 
 if __name__ == "__main__":

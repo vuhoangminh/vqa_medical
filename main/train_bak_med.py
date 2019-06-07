@@ -28,13 +28,13 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/idrid/minhmul_att_train_relu.yaml', type=str,
+parser.add_argument('--path_opt', default='options/med/bilinear_att_train_imagenet_h64_g8_relu_bert.yaml', type=str,
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
 # logs options
 parser.add_argument('--dir_logs',
-                    default='logs/idrid/minhmul_att_train_relu',
+                    default='logs/med/temp',
                     type=str, help='dir logs')
 # data options
 parser.add_argument('--vqa_trainsplit', type=str,
@@ -254,18 +254,16 @@ def main():
         # train for one epoch
         engine.train(train_loader, model, criterion, optimizer,
                      exp_logger, epoch, args.print_freq,
-                    #  dict=io_utils.read_pickle(question_features_path),
-                    #  bert_dim=options["model"]["dim_q"]
-                     )
+                     dict=io_utils.read_pickle(question_features_path),
+                     bert_dim=options["model"]["dim_q"])
 
         if options['vqa']['trainsplit'] == 'train':
             # evaluate on validation set
             acc1, val_results = engine.validate(val_loader, model, criterion,
                                                 exp_logger, epoch, args.print_freq, topk=5,
-                                                # dict=io_utils.read_pickle(
-                                                #     question_features_path),
-                                                # bert_dim=options["model"]["dim_q"]
-                                                )
+                                                dict=io_utils.read_pickle(
+                                                    question_features_path),
+                                                bert_dim=options["model"]["dim_q"])
             # remember best prec@1 and save checkpoint
             is_best = acc1 > best_acc1
             best_acc1 = max(acc1, best_acc1)
