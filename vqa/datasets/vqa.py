@@ -4,6 +4,8 @@ import torch
 import torch.utils.data as data
 import copy
 import numpy as np
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 from ..lib import utils
 from ..lib.dataloader import DataLoader

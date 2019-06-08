@@ -1,3 +1,12 @@
+import vqa.models as models
+import vqa.datasets as datasets
+import vqa.lib.criterions as criterions
+import vqa.lib.logger as logger
+import vqa.lib.utils as utils
+import vqa.lib.engine as engine
+import datasets.utils.io_utils as io_utils
+import datasets.utils.paths_utils as path_utils
+import vqa.lib.utils as gen_utils
 import argparse
 import os
 import shutil
@@ -9,16 +18,8 @@ from pprint import pprint
 import torch
 import torch.nn as nn
 import torch.backends.cudnn as cudnn
-
-import vqa.lib.utils as gen_utils
-import datasets.utils.paths_utils as path_utils
-import datasets.utils.io_utils as io_utils
-import vqa.lib.engine as engine
-import vqa.lib.utils as utils
-import vqa.lib.logger as logger
-import vqa.lib.criterions as criterions
-import vqa.datasets as datasets
-import vqa.models as models
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 parser = argparse.ArgumentParser(
@@ -254,8 +255,8 @@ def main():
         # train for one epoch
         engine.train(train_loader, model, criterion, optimizer,
                      exp_logger, epoch, args.print_freq,
-                    #  dict=io_utils.read_pickle(question_features_path),
-                    #  bert_dim=options["model"]["dim_q"]
+                     #  dict=io_utils.read_pickle(question_features_path),
+                     #  bert_dim=options["model"]["dim_q"]
                      )
 
         if options['vqa']['trainsplit'] == 'train':
