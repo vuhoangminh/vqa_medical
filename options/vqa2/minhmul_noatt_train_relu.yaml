@@ -14,7 +14,6 @@ coco:
     dir: data/coco
     arch: fbresnet152torch
     mode: noatt
-    size: 448
 model:
     arch: MinhmulNoAtt
     seq2vec:
