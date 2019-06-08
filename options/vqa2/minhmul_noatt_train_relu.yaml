@@ -12,7 +12,7 @@ vqa:
     samplingans: True
 coco:
     dir: data/coco
-    arch: fbresnet152
+    arch: fbresnet152torch
     mode: noatt
     size: 448
 model:
