@@ -170,17 +170,17 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
             meters['batch_time'].update(time.time() - end, n=batch_size)
             end = time.time()
 
-            bleu_batch = metrics_utils.compute_bleu_score(pred_dict, gt_dict)
+            # bleu_batch = metrics_utils.compute_bleu_score(pred_dict, gt_dict)
             if i % print_freq == 0:
                 print('Val: [{0}/{1}]\t'
-                      'Bleu@ {bleu_batch:.3f} \t'
+                    #   'Bleu@ {bleu_batch:.3f} \t'
                       'Acc@1 {acc1.val:.3f} ({acc1.avg:.3f})\t'
                       'Acc@2 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
                           i, len(loader),
-                          bleu_batch=bleu_batch*100,
+                        #   bleu_batch=bleu_batch*100,
                           acc1=meters['acc1'], acc2=meters['acc2']))
 
-            bleu_score += bleu_batch*batch_size
+            # bleu_score += bleu_batch*batch_size
             n_sample += batch_size
 
 
@@ -193,9 +193,13 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
                     prob = torch.cat((prob, sm(output).cpu()), 0)
 
 
-    bleu_score = bleu_score / n_sample
-    print(' * Bleu@ {bleu_score:.3f} Acc@1 {acc1.avg:.3f} Acc@2 {acc2.avg:.3f}'
-          .format(bleu_score=bleu_score*100, acc1=meters['acc1'], acc2=meters['acc2']))
+    # bleu_score = bleu_score / n_sample
+    # print(' * Bleu@ {bleu_score:.3f} Acc@1 {acc1.avg:.3f} Acc@2 {acc2.avg:.3f}'
+    #       .format(bleu_score=bleu_score*100, acc1=meters['acc1'], acc2=meters['acc2']))
+
+    # bleu_score = bleu_score / n_sample
+    print(' * Acc@1 {acc1.avg:.3f} Acc@2 {acc2.avg:.3f}'
+          .format(acc1=meters['acc1'], acc2=meters['acc2']))
 
     logger.log_meters('val', n=epoch)
 

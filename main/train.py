@@ -74,7 +74,7 @@ parser.add_argument('--save_all_from', type=int,
                          ''' then keep all (useful to save disk space)')''')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation and test set')
-parser.add_argument('-j', '--workers', default=4, type=int,
+parser.add_argument('-j', '--workers', default=2, type=int,
                     help='number of data loading workers')
 parser.add_argument('--print_freq', '-p', default=10, type=int,
                     help='print frequency')
