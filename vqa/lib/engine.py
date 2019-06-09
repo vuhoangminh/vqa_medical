@@ -129,7 +129,11 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
             target_answer = sample['answer'].cuda()
 
             # compute output
-            output, hidden = model(input_visual, input_question)
+            # compute output
+            try:
+                output, hidden = model(input_visual, input_question)
+            except:
+                output = model(input_visual, input_question)
             # loss = criterion(output, target_answer)
             # meters['loss'].update(loss.item(), n=batch_size)
 
@@ -231,7 +235,10 @@ def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None, bert_
         # input_question = sample['question'].cuda()
 
         # compute output
-        output, hidden = model(input_visual, input_question)
+        try:
+            output, hidden = model(input_visual, input_question)
+        except:
+            output = model(input_visual, input_question)
 
         # compute predictions for OpenEnded accuracy
         _, pred = output.data.cpu().max(1)
