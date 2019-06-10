@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/breast/minhmul_att_train_2048
+    dir_logs: logs/breast/minhmul_att_train_relu
 vqa:
     dataset: VQA
     dir: data/vqa_breast
@@ -19,6 +19,8 @@ model:
     arch: MinhmulAtt
     dim_v: 2048
     dim_q: 2400
+    centric_v: 1
+    centric_q: 2
     seq2vec:
         arch: skipthoughts
         dir_st: data/skip-thoughts
@@ -27,23 +29,23 @@ model:
         fixed_emb: False
     attention:
         nb_glimpses: 4
-        dim_h: 2048
+        dim_h: 600
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
-        activation_v: tanh
-        activation_q: tanh
-        activation_mm: tanh
+        activation_v: relu
+        activation_q: relu
+        activation_mm: relu
     fusion:
-        dim_h: 2048
+        dim_h: 600
         dropout_v: 0.5
         dropout_q: 0.5
-        activation_v: tanh
-        activation_q: tanh
+        activation_v: relu
+        activation_q: relu
     classif:
-        activation: tanh
+        activation: relu
         dropout: 0.5
 optim:
     lr: 0.0001
-    batch_size: 128
+    batch_size: 64
     epochs: 100

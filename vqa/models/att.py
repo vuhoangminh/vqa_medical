@@ -222,13 +222,23 @@ class MinhmulAtt(AbstractAtt):
                                         self.num_classes)
 
     def _fusion_att(self, x_v, x_q):
-        x_att = torch.pow(x_q, 2)
-        x_att = torch.mul(x_v, x_att)
+        if 'centric_v' in self.opt:
+            x_v = torch.pow(x_v, self.opt['centric_v'])
+        else:
+            x_v = torch.pow(x_v, 2)
+        if 'centric_q' in self.opt:
+            x_q = torch.pow(x_q, self.opt['centric_q'])
+        x_att = torch.mul(x_v, x_q)
         return x_att
 
     def _fusion_classif(self, x_v, x_q):
-        x_mm = torch.pow(x_q, 2)
-        x_mm = torch.mul(x_v, x_mm)
+        if 'centric_v' in self.opt:
+            x_v = torch.pow(x_v, self.opt['centric_v'])
+        else:
+            x_v = torch.pow(x_v, 2)
+        if 'centric_q' in self.opt:
+            x_q = torch.pow(x_q, self.opt['centric_q'])
+        x_mm = torch.mul(x_v, x_q)
         return x_mm
 
 
