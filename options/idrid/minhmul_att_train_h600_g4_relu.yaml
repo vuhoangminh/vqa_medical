@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/idrid/minhmul_att_train_relu
+    dir_logs: logs/idrid/minhmul_att_train_h600_g4_relu
 vqa:
     dataset: VQA
     dir: data/vqa_idrid
@@ -19,6 +19,8 @@ model:
     arch: MinhmulAtt
     dim_v: 2048
     dim_q: 2400
+    centric_v: 1
+    centric_q: 2
     seq2vec:
         arch: skipthoughts
         dir_st: data/skip-thoughts
@@ -27,7 +29,7 @@ model:
         fixed_emb: False
     attention:
         nb_glimpses: 4
-        dim_h: 1200
+        dim_h: 600
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
@@ -35,7 +37,7 @@ model:
         activation_q: relu
         activation_mm: relu
     fusion:
-        dim_h: 1200
+        dim_h: 600
         dropout_v: 0.5
         dropout_q: 0.5
         activation_v: relu
