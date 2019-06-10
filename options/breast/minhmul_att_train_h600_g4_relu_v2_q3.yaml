@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/breast/minhmul_att_train_h600_g4_relu
+    dir_logs: logs/breast/minhmul_att_train_h600_g4_relu_v2_q3
 vqa:
     dataset: VQA
     dir: data/vqa_breast
@@ -19,8 +19,8 @@ model:
     arch: MinhmulAtt
     dim_v: 2048
     dim_q: 2400
-    centric_v: 1
-    centric_q: 2
+    centric_v: 2
+    centric_q: 3
     seq2vec:
         arch: skipthoughts
         dir_st: data/skip-thoughts
