@@ -227,7 +227,7 @@ class MinhmulAtt(AbstractAtt):
         if 'centric_q' in self.opt:
             x_q = torch.pow(x_q, self.opt['centric_q'])
         else:
-            x_1 = torch.pow(x_1, 2)
+            x_q = torch.pow(x_q, 2)
         x_att = torch.mul(x_v, x_q)
         return x_att
 
@@ -237,7 +237,7 @@ class MinhmulAtt(AbstractAtt):
         if 'centric_q' in self.opt:
             x_q = torch.pow(x_q, self.opt['centric_q'])
         else:
-            x_1 = torch.pow(x_1, 2)            
+            x_q = torch.pow(x_q, 2)            
         x_mm = torch.mul(x_v, x_q)
         return x_mm
 

@@ -13,6 +13,7 @@ LIST_DATASET = [
 LIST_METHOD = [
     "minhmul_att_train_relu",
     "minhmul_noatt_train_relu",
+    # "minhmul_att_train_h600_g4_relu",
     # "minhmul_att_train",
     # "minhmul_noatt_train",
     # "mlb_att_train",
