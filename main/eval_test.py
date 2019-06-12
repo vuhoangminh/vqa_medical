@@ -4,10 +4,10 @@ import numpy as np
 
 LIST_DATASET = [
     "breast",
-    "idrid",
-    "tools",
-    "vqa",
-    "vqa2"
+    # "idrid",
+    # "tools",
+    # "vqa",
+    # "vqa2"
 ]
 
 LIST_METHOD = [

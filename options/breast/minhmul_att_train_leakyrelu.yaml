@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/breast/minhmul_att_train_relu
+    dir_logs: logs/breast/minhmul_att_train_leakyrelu
 vqa:
     dataset: VQA
     dir: data/vqa_breast
@@ -31,19 +31,19 @@ model:
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
-        activation_v: relu
-        activation_q: relu
-        activation_mm: relu
+        activation_v: leaky_relu
+        activation_q: leaky_relu
+        activation_mm: leaky_relu
     fusion:
         dim_h: 1200
         dropout_v: 0.5
         dropout_q: 0.5
-        activation_v: relu
-        activation_q: relu
+        activation_v: leaky_relu
+        activation_q: leaky_relu
     classif:
         activation: relu
         dropout: 0.5
 optim:
     lr: 0.0001
-    batch_size: 64
+    batch_size: 128
     epochs: 100
