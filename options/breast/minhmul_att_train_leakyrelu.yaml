@@ -41,7 +41,7 @@ model:
         activation_v: leaky_relu
         activation_q: leaky_relu
     classif:
-        activation: relu
+        activation: leaky_relu
         dropout: 0.5
 optim:
     lr: 0.0001
