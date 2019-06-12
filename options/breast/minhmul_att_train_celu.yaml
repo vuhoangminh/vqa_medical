@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/breast/minhmul_att_train_celu
+    dir_logs: logs/breast/minhmul_att_train_elu
 vqa:
     dataset: VQA
     dir: data/vqa_breast
@@ -31,17 +31,17 @@ model:
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
-        activation_v: celu
-        activation_q: celu
-        activation_mm: celu
+        activation_v: elu
+        activation_q: elu
+        activation_mm: elu
     fusion:
         dim_h: 1200
         dropout_v: 0.5
         dropout_q: 0.5
-        activation_v: celu
-        activation_q: celu
+        activation_v: elu
+        activation_q: elu
     classif:
-        activation: celu
+        activation: elu
         dropout: 0.5
 optim:
     lr: 0.0001
