@@ -3,16 +3,24 @@ from pprint import pprint
 import numpy as np
 
 LIST_DATASET = [
-    "breast",
+    # "breast",
     # "idrid",
-    # "tools",
+    "tools",
     # "vqa",
     # "vqa2"
 ]
 
 LIST_METHOD = [
     "minhmul_att_train_relu",
+    # "minhmul_att_train_celu",
+    "minhmul_att_train_selu",
+    "minhmul_att_train_leakyrelu",
     "minhmul_noatt_train_relu",
+    "minhmul_noatt_train_selu",
+    "minhmul_att_train_leakyrelu",
+    "minhmul_att_train_relu_wrong",
+    "minhmul_att_train_wrong",
+    "minhmul_att_train_selu_wrong",    
     # "minhmul_att_train_h600_g4_relu",
     # "minhmul_att_train",
     # "minhmul_noatt_train",
