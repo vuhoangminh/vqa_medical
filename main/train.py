@@ -1,3 +1,4 @@
+from comet_ml import Experiment
 import vqa.models as models
 import vqa.datasets as datasets
 import vqa.lib.criterions as criterions
@@ -29,13 +30,13 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/breast/minhmul_att_train_h600_g4_relu.yaml', type=str,
+parser.add_argument('--path_opt', default='options/breast/minhmul_att_train_relu.yaml', type=str,
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
 # logs options
 parser.add_argument('--dir_logs',
-                    default='logs/breast/minhmul_att_train_h600_g4_relu',
+                    default='logs/breast/minhmul_att_train_relu',
                     type=str, help='dir logs')
 # data options
 parser.add_argument('--vqa_trainsplit', type=str,
@@ -243,75 +244,87 @@ def main():
     #########################################################################################
     # Begin training on train/val or trainval/test
     #########################################################################################
+    experiment = Experiment(api_key="AgTGwIoRULRgnfVR5M8mZ5AfS",
+                            project_name="vqa",
+                            workspace="vuhoangminh")
+    experiment.log_parameters(flatten(options))
 
-    for epoch in range(args.start_epoch+1, options['optim']['epochs']):
-        # if epoch > 1 and gen_utils.str2bool(args.is_augment_image) and 'options/med/' in args.path_opt:
-        #     cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 1 -b 64"
-        #     os.system(cmd)
-        # if epoch == 1 and 'options/med/' in args.path_opt:
-        #     cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 0 -b 64"
-        #     os.system(cmd)
+    with experiment.train():
+        for epoch in range(args.start_epoch+1, options['optim']['epochs']):
+            # if epoch > 1 and gen_utils.str2bool(args.is_augment_image) and 'options/med/' in args.path_opt:
+            #     cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 1 -b 64"
+            #     os.system(cmd)
+            # if epoch == 1 and 'options/med/' in args.path_opt:
+            #     cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 0 -b 64"
+            #     os.system(cmd)
 
-        # train for one epoch
-        engine.train(train_loader, model, criterion, optimizer,
-                     exp_logger, epoch, args.print_freq,
-                     #  dict=io_utils.read_pickle(question_features_path),
-                     #  bert_dim=options["model"]["dim_q"]
-                     )
+            # train for one epoch
 
-        if options['vqa']['trainsplit'] == 'train':
-            # evaluate on validation set
-            acc1, val_results = engine.validate(val_loader, model, criterion,
-                                                exp_logger, epoch, args.print_freq, topk=3,
-                                                # dict=io_utils.read_pickle(
-                                                #     question_features_path),
-                                                # bert_dim=options["model"]["dim_q"]
-                                                )
-            # remember best prec@1 and save checkpoint
-            is_best = acc1 > best_acc1
-            best_acc1 = max(acc1, best_acc1)
-            save_checkpoint({
-                'epoch': epoch,
-                'arch': options['model']['arch'],
-                'best_acc1': best_acc1,
-                'exp_logger': exp_logger
-            },
-                model.module.state_dict(),
-                optimizer.state_dict(),
-                options['logs']['dir_logs'],
-                args.save_model,
-                args.save_all_from,
-                is_best)
+            engine.train(train_loader, model, criterion, optimizer,
+                         exp_logger, epoch,
+                         experiment,
+                         args.print_freq,
+                         #  dict=io_utils.read_pickle(question_features_path),
+                         #  bert_dim=options["model"]["dim_q"]
+                         )
 
-            # save results and compute OpenEnd accuracy
-            # I dont want to save results to speed up
-            # save_results(val_results, epoch, valset.split_name(),
-            #              options['logs']['dir_logs'], options['vqa']['dir'])
-        else:
-            test_results, testdev_results = engine.test(test_loader, model, exp_logger,
-                                                        epoch, args.print_freq, topk=3,
-                                                        dict=io_utils.read_pickle(
-                                                            question_features_path),
-                                                        bert_dim=options["model"]["dim_q"])
+            if options['vqa']['trainsplit'] == 'train':
+                # evaluate on validation set
+                with experiment.validate():
+                    acc1, val_results = engine.validate(val_loader, model, criterion,
+                                                        exp_logger, epoch, args.print_freq, topk=3,
+                                                        # dict=io_utils.read_pickle(
+                                                        #     question_features_path),
+                                                        # bert_dim=options["model"]["dim_q"]
+                                                        )
+                    # this will be logged as validation accuracy based on the context.
+                    experiment.log_metric("acc1", acc1)
 
-            # save checkpoint at every timestep
-            save_checkpoint({
-                'epoch': epoch,
-                'arch': options['model']['arch'],
-                'best_acc1': best_acc1,
-                'exp_logger': exp_logger
-            },
-                model.module.state_dict(),
-                optimizer.state_dict(),
-                options['logs']['dir_logs'],
-                args.save_model,
-                args.save_all_from)
+                # remember best prec@1 and save checkpoint
+                is_best = acc1 > best_acc1
+                best_acc1 = max(acc1, best_acc1)
+                save_checkpoint({
+                    'epoch': epoch,
+                    'arch': options['model']['arch'],
+                    'best_acc1': best_acc1,
+                    'exp_logger': exp_logger
+                },
+                    model.module.state_dict(),
+                    optimizer.state_dict(),
+                    options['logs']['dir_logs'],
+                    args.save_model,
+                    args.save_all_from,
+                    is_best)
 
-            # save results and DOES NOT compute OpenEnd accuracy
-            save_results(test_results, epoch, testset.split_name(),
-                         options['logs']['dir_logs'], options['vqa']['dir'])
-            save_results(testdev_results, epoch, testset.split_name(testdev=True),
-                         options['logs']['dir_logs'], options['vqa']['dir'])
+                # save results and compute OpenEnd accuracy / uncomment here to save prediction
+                # I dont want to save results to speed up
+                # save_results(val_results, epoch, valset.split_name(),
+                #              options['logs']['dir_logs'], options['vqa']['dir'])
+            else:
+                test_results, testdev_results = engine.test(test_loader, model, exp_logger,
+                                                            epoch, args.print_freq, topk=3,
+                                                            dict=io_utils.read_pickle(
+                                                                question_features_path),
+                                                            bert_dim=options["model"]["dim_q"])
+
+                # save checkpoint at every timestep
+                save_checkpoint({
+                    'epoch': epoch,
+                    'arch': options['model']['arch'],
+                    'best_acc1': best_acc1,
+                    'exp_logger': exp_logger
+                },
+                    model.module.state_dict(),
+                    optimizer.state_dict(),
+                    options['logs']['dir_logs'],
+                    args.save_model,
+                    args.save_all_from)
+
+                # save results and DOES NOT compute OpenEnd accuracy
+                save_results(test_results, epoch, testset.split_name(),
+                             options['logs']['dir_logs'], options['vqa']['dir'])
+                save_results(testdev_results, epoch, testset.split_name(testdev=True),
+                             options['logs']['dir_logs'], options['vqa']['dir'])
 
 
 def make_meters():
@@ -428,6 +441,18 @@ def load_checkpoint(model, optimizer, path_ckpt):
     print("=> loaded checkpoint '{}' (epoch {}, best_acc1 {})"
           .format(path_ckpt, start_epoch, best_acc1))
     return start_epoch, best_acc1, exp_logger
+
+
+def flatten(d, parent_key='', sep='_'):
+    import collections
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collections.MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
 
 
 if __name__ == '__main__':

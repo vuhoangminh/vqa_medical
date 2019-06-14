@@ -6,7 +6,7 @@ import datasets.utils.metrics_utils as metrics_utils
 from vqa.models import sen2vec
 
 
-def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dict=None, bert_dim=3072):
+def train(loader, model, criterion, optimizer, logger, epoch, experiment, print_freq=10, dict=None, bert_dim=3072):
     # switch to train mode
     model.train()
     meters = logger.reset_meters('train')
@@ -16,6 +16,7 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
     results = []
     bleu_score = 0
     n_sample = 0
+
     for i, sample in enumerate(loader):
         pred_dict = {}
         gt_dict = {}
@@ -30,7 +31,8 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
         else:
             # questions = sample["item_vqa"]["question_raw"]
             questions = sample["question_raw"]
-            input_question = torch.zeros([sample['visual'].shape[0], bert_dim])
+            input_question = torch.zeros(
+                [sample['visual'].shape[0], bert_dim])
             for j in range(sample['visual'].shape[0]):
                 if bert_dim == 3072:
                     input_question[j] = torch.tensor(dict[questions[j]])
@@ -47,7 +49,7 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
             output, hidden = model(input_visual, input_question)
         except:
             output = model(input_visual, input_question)
-        
+
         torch.cuda.synchronize()
         loss = criterion(output, target_answer)
         meters['loss'].update(loss.item(), n=batch_size)
@@ -90,10 +92,16 @@ def train(loader, model, criterion, optimizer, logger, epoch, print_freq=10, dic
                       #   bleu_batch=bleu_batch*100,
                       loss=meters['loss'], acc1=meters['acc1'], acc2=meters['acc2']))
 
+            # Log to Comet.ml
+            experiment.log_metric("batch_acc1", meters['acc1'].avg)
+            
+    # Log to Comet.ml
+    experiment.log_metric("acc1", meters['acc1'].avg)
     logger.log_meters('train', n=epoch)
 
 
-def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, dict=None, bert_dim=3072, is_return_prob=False):
+def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1,
+             dict=None, bert_dim=3072, is_return_prob=False):
     results = []
     bleu_score = 0
     n_sample = 0
@@ -173,25 +181,23 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2, topk=1, di
             # bleu_batch = metrics_utils.compute_bleu_score(pred_dict, gt_dict)
             if i % print_freq == 0:
                 print('Val: [{0}/{1}]\t'
-                    #   'Bleu@ {bleu_batch:.3f} \t'
+                      #   'Bleu@ {bleu_batch:.3f} \t'
                       'Acc@1 {acc1.val:.3f} ({acc1.avg:.3f})\t'
                       'Acc@2 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
                           i, len(loader),
-                        #   bleu_batch=bleu_batch*100,
+                          #   bleu_batch=bleu_batch*100,
                           acc1=meters['acc1'], acc2=meters['acc2']))
 
             # bleu_score += bleu_batch*batch_size
             n_sample += batch_size
 
-
             # compute probabilities
             if is_return_prob:
-                sm = torch.nn.Softmax() 
+                sm = torch.nn.Softmax()
                 if i == 0:
                     prob = sm(output).cpu()
                 else:
                     prob = torch.cat((prob, sm(output).cpu()), 0)
-
 
     # bleu_score = bleu_score / n_sample
     # print(' * Bleu@ {bleu_score:.3f} Acc@1 {acc1.avg:.3f} Acc@2 {acc2.avg:.3f}'
@@ -228,11 +234,11 @@ def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None, bert_
             # questions = sample["item_vqa"]["question"]
             input_question = torch.zeros([sample['visual'].shape[0], bert_dim])
             for j in range(sample['visual'].shape[0]):
-                    if bert_dim == 3072:
-                        input_question[j] = torch.tensor(dict[questions[j]])
-                    else:
-                        input_question[j] = torch.tensor(
-                            dict[questions[j]])[768:1536]
+                if bert_dim == 3072:
+                    input_question[j] = torch.tensor(dict[questions[j]])
+                else:
+                    input_question[j] = torch.tensor(
+                        dict[questions[j]])[768:1536]
             input_question = input_question.cuda()
 
         input_visual = sample['visual'].cuda()
@@ -271,11 +277,11 @@ def test(loader, model, logger, epoch=0, print_freq=10, topk=1, dict=None, bert_
 
         # compute probabilities
         if is_return_prob:
-            sm = torch.nn.Softmax() 
+            sm = torch.nn.Softmax()
             if i == 0:
                 prob = sm(output).cpu()
             else:
-                prob = torch.cat((prob, sm(output).cpu()), 0)                      
+                prob = torch.cat((prob, sm(output).cpu()), 0)
 
     logger.log_meters('test', n=epoch)
 
