@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/idrid/minhmul_att_train_h200_g4_relu
+    dir_logs: logs/idrid/minhmul_att_train_selu_h200_g8
 vqa:
     dataset: VQA
     dir: data/vqa_idrid
@@ -26,22 +26,22 @@ model:
         dropout: 0.25
         fixed_emb: False
     attention:
-        nb_glimpses: 4
+        nb_glimpses: 8
         dim_h: 200
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
-        activation_v: relu
-        activation_q: relu
-        activation_mm: relu
+        activation_v: selu
+        activation_q: selu
+        activation_mm: selu
     fusion:
         dim_h: 200
         dropout_v: 0.5
         dropout_q: 0.5
-        activation_v: relu
-        activation_q: relu
+        activation_v: selu
+        activation_q: selu
     classif:
-        activation: relu
+        activation: selu
         dropout: 0.5
 optim:
     lr: 0.0001
