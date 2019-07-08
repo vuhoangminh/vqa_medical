@@ -4,9 +4,9 @@ import numpy as np
 
 LIST_DATASET = [
     # "breast",
-    "idrid",
+    # "idrid",
     # "tools",
-    # "vqa",
+    "vqa",
     # "vqa2"
 ]
 
@@ -22,7 +22,8 @@ LIST_METHOD = [
     "minhmul_noatt_train_selu",
     "minhmul_att_train_selu",
 
-    "minhmul_att_train_relu_h64_g8",
+    "minhmul_att_train_relu_h200_g8",
+    "minhmul_att_train_selu_h200_g8",
 
     # "minhmul_att_train_leakyrelu",
     # "minhmul_att_train_celu",
@@ -45,7 +46,7 @@ LOGS_DIR = PROJECT_DIR + "/logs/"
 
 
 
-def get_val_acc1_from_json_old(json_path, num=20):
+def get_val_acc1_from_json(json_path, num=20):
     with open(json_path) as f:
         data = json.load(f)
     val = data["logged"]["val"]["acc1"]
@@ -59,7 +60,7 @@ def get_val_acc1_from_json_old(json_path, num=20):
     return list_acc1, to
 
 
-def get_val_acc1_from_json(json_path, num=20):
+def get_val_acc1_from_json_new(json_path, num=20):
     with open(json_path) as f:
         data = json.load(f)
     val = data["logged"]["val"]["acc1"]
