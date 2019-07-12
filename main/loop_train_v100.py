@@ -1,40 +1,60 @@
 import os
+import random
 
-cmd_list = list()
+def run_loop():
 
-list_options = [
-    # "breast/minhmul_att",
-    "breast/minhmul_noatt",
-    "tools/minhmul_att",
-    "tools/minhmul_noatt",
-    "idrid/minhmul_att",
-    "idrid/minhmul_noatt",
-    "vqa/minhmul_att",
-    "vqa/minhmul_noatt",
-    "vqa2/minhmul_att",
-    "vqa2/minhmul_noatt",
-]
+    cmd_list = list()
+    logs_list = list()
+
+    list_options = [
+        "minhmul_att_train_selu_h200_g8",
+        "minhmul_att_train_relu_h200_g8",
+        "minhmul_att_train_selu_h200_g4",
+        "minhmul_att_train_relu_h200_g4",    
+        "minhmul_att_train_selu",
+        "minhmul_att_train_relu",
+    ]
+
+    list_dataset = [
+        "vqa",
+        "vqa2",
+        "breast",
+        "idrid",
+        "tools"
+    ]
+
+    for dataset in list_dataset:
+        for option in list_options:
+            logs = "logs/{}/{}".format(dataset, option)
+            cmd = "python main/train.py --path_opt options/{}/{}.yaml --dir_logs {} --vqa_trainsplit train -b 256 --epochs 120".format(dataset, option, logs)
+            cmd_list.append(cmd)
+            logs_list.append(logs)
+
+    combined = list(zip(logs_list, cmd_list))
+    # random.shuffle(combined)
+
+    logs_list, cmd_list = zip(*combined)
+
+    # pp.pprint(combined)
+
+    for i in range(len(cmd_list)):
+        cmd = cmd_list[i]
+        logs = logs_list[i]
+
+        if not os.path.exists(logs):
+            try:
+                print("========================================================================================================")
+                print(">> RUNNING:", cmd)
+                print("========================================================================================================")
+                os.system(cmd)
+                import torch
+                torch.cuda.empty_cache()
+            except:
+                print("something wrong")
+
+def main():
+    run_loop()
 
 
-for option in list_options:
-
-    if "minhmul_att" in option and "breast" in option:
-        cmd = "CUDA_VISIBLE_DEVICES=1 python main/train.py --path_opt options/{}_train_relu.yaml --dir_logs logs/{}_train_relu --vqa_trainsplit train -b 256 --resume ckpt".format(
-            option, option
-        )
-    elif "minhmul_att" in option:
-        cmd = "CUDA_VISIBLE_DEVICES=1 python main/train.py --path_opt options/{}_train_relu.yaml --dir_logs logs/{}_train_relu --vqa_trainsplit train -b 256".format(
-            option, option
-        )
-    else:
-        cmd = "CUDA_VISIBLE_DEVICES=1 python main/train.py --path_opt options/{}_train_relu.yaml --dir_logs logs/{}_train_relu --vqa_trainsplit train -b 512".format(
-            option, option
-        )
-
-    try:
-        print(">> RUNNING:", cmd)
-        os.system(cmd)
-        # import torch
-        # torch.cuda.empty_cache()
-    except:
-        print("something wrong")
+if __name__ == "__main__":
+    main()
