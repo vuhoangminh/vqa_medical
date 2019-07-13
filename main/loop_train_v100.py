@@ -26,7 +26,7 @@ def run_loop():
     for dataset in list_dataset:
         for option in list_options:
             logs = "logs/{}/{}".format(dataset, option)
-            cmd = "python main/train.py --path_opt options/{}/{}.yaml --dir_logs {} --vqa_trainsplit train -b 256 --epochs 120".format(dataset, option, logs)
+            cmd = "python main/train.py --path_opt options/{}/{}.yaml --dir_logs {} --vqa_trainsplit train -b 512 --epochs 120".format(dataset, option, logs)
             cmd_list.append(cmd)
             logs_list.append(logs)
 
