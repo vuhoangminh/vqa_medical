@@ -31,7 +31,7 @@ def run_loop():
             logs_list.append(logs)
 
     combined = list(zip(logs_list, cmd_list))
-    # random.shuffle(combined)
+    random.shuffle(combined)
 
     logs_list, cmd_list = zip(*combined)
 
