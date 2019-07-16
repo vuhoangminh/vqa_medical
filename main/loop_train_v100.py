@@ -4,6 +4,7 @@ import random
 def run_loop():
 
     cmd_list = list()
+    cmd_resume_list = list()
     logs_list = list()
 
     list_options = [
@@ -16,24 +17,26 @@ def run_loop():
     ]
 
     list_dataset = [
-        "vqa",
-        "vqa2",
         "breast",
         "idrid",
-        "tools"
+        "tools",
+        # "vqa",
+        # "vqa2",        
     ]
 
     for dataset in list_dataset:
         for option in list_options:
             logs = "logs/{}/{}".format(dataset, option)
             cmd = "python main/train.py --path_opt options/{}/{}.yaml --dir_logs {} --vqa_trainsplit train -b 256 --epochs 120".format(dataset, option, logs)
+            cmd_resume = "python main/train.py --path_opt options/{}/{}.yaml --dir_logs {} --vqa_trainsplit train -b 256 --epochs 120 --resume ckpt".format(dataset, option, logs)
             cmd_list.append(cmd)
+            cmd_resume_list(cmd_resume)
             logs_list.append(logs)
 
-    combined = list(zip(logs_list, cmd_list))
+    combined = list(zip(logs_list, cmd_list, cmd_resume_list))
     random.shuffle(combined)
 
-    logs_list, cmd_list = zip(*combined)
+    logs_list, cmd_list, cmd_resume_list = zip(*combined)
 
     # pp.pprint(combined)
 
@@ -51,6 +54,17 @@ def run_loop():
                 torch.cuda.empty_cache()
             except:
                 print("something wrong")
+        else:
+            try:
+                print("========================================================================================================")
+                print(">> RUNNING:", cmd)
+                print("========================================================================================================")
+                os.system(cmd)
+                import torch
+                torch.cuda.empty_cache()
+            except:
+                print("something wrong")            
+
 
 def main():
     run_loop()
