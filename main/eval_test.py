@@ -29,6 +29,8 @@ LIST_METHOD = [
 
     "minhmul_att_train_relu_h200_g8",
     "minhmul_att_train_selu_h200_g8",
+    "minhmul_att_train_relu_h200_g4",
+    "minhmul_att_train_selu_h200_g4",    
 
     # "minhmul_att_train_leakyrelu",
     # "minhmul_att_train_celu",
@@ -50,8 +52,8 @@ PROJECT_DIR = path_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
 LOGS_DIR = PROJECT_DIR + "/logs/"
 
 
-
-def get_val_acc1_from_json(json_path, num=40):
+# keep num = 20 please
+def get_val_acc1_from_json(json_path, num=20):
     with open(json_path) as f:
         data = json.load(f)
     val = data["logged"]["val"]["acc1"]
@@ -99,17 +101,17 @@ def process_one_method_one_dataset(method, dataset):
         mean = np.mean(list_acc1)
         std = np.std(list_acc1)
     except:
-        mean, std = 0, 0
+        mean, std, to = 0, 0, 0
 
-    return mean, std
+    return mean, std, to
 
 
 def main():
     for dataset in LIST_DATASET:
         for method in LIST_METHOD:
             print("\n{}, {}".format(dataset, method))
-            mean, std = process_one_method_one_dataset(method, dataset)
-            print("mean={:.2f}({:.2f})".format(mean, std))
+            mean, std, to = process_one_method_one_dataset(method, dataset)
+            print("mean={:.2f}({:.2f}) \t {}".format(mean, std, to))
 
 
 if __name__ == "__main__":
