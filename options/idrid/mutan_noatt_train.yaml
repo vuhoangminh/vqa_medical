@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/idrid/minhmul_noatt_train_selu
+    dir_logs: logs/idrid/mutan_noatt_train
 vqa:
     dataset: VQA
     dir: data/vqa_idrid
@@ -16,7 +16,7 @@ coco:
     mode: noatt
     size: 448
 model:
-    arch: MinhmulNoAtt
+    arch: MutanNoAtt
     seq2vec:
         arch: skipthoughts
         dir_st: data/skip-thoughts
@@ -26,13 +26,17 @@ model:
     fusion:
         dim_v: 2048
         dim_q: 2400
-        dim_h: 1200
+        dim_hv: 360
+        dim_hq: 360
+        dim_mm: 360
+        R: 10
         dropout_v: 0.5
         dropout_q: 0.5
-        activation_v: selu
-        activation_q: selu
+        activation_v: tanh
+        activation_q: tanh
+        dropout_hv: 0
+        dropout_hq: 0
     classif:
-        activation: selu
         dropout: 0.5
 optim:
     lr: 0.0001
