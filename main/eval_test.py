@@ -4,9 +4,9 @@ import numpy as np
 
 LIST_DATASET = [
     # "breast",
-    "idrid",
+    # "idrid",
     # "tools",
-    # "vqa",
+    "vqa",
     # "vqa2"
 ]
 
