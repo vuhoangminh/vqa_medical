@@ -30,13 +30,13 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/med/minhmul_att_train_relu.yaml', type=str,
+parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_h200_g4_relu.yaml', type=str,
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
 # logs options
 parser.add_argument('--dir_logs',
-                    default='logs/breast/minhmul_att_train_relu',
+                    default='logs/med/minhmul_att_train_imagenet_h200_g4_relu',
                     type=str, help='dir logs')
 # data options
 parser.add_argument('--vqa_trainsplit', type=str,
@@ -263,19 +263,14 @@ def main():
             engine.train(train_loader, model, criterion, optimizer,
                          exp_logger, epoch,
                          experiment,
-                         args.print_freq,
-                         #  dict=io_utils.read_pickle(question_features_path),
-                         #  bert_dim=options["model"]["dim_q"]
+                         args.print_freq
                          )
 
             if options['vqa']['trainsplit'] == 'train':
                 # evaluate on validation set
                 with experiment.validate():
                     acc1, val_results = engine.validate(val_loader, model, criterion,
-                                                        exp_logger, epoch, args.print_freq, topk=3,
-                                                        # dict=io_utils.read_pickle(
-                                                        #     question_features_path),
-                                                        # bert_dim=options["model"]["dim_q"]
+                                                        exp_logger, epoch, args.print_freq, topk=3
                                                         )
                     # this will be logged as validation accuracy based on the context.
                     experiment.log_metric("acc1", acc1)
@@ -296,10 +291,6 @@ def main():
                     args.save_all_from,
                     is_best)
 
-                # save results and compute OpenEnd accuracy / uncomment here to save prediction
-                # I dont want to save results to speed up
-                # save_results(val_results, epoch, valset.split_name(),
-                #              options['logs']['dir_logs'], options['vqa']['dir'])
             else:
                 test_results, testdev_results = engine.test(test_loader, model, exp_logger,
                                                             epoch, args.print_freq, topk=3,
