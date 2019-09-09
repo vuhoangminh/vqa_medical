@@ -217,7 +217,7 @@ def get_ans(dict_score, folder, df, fr=79, to=99, weight=1):
     return dict_score
 
 
-def get_ans(dict_score, folder, df, fr=79, to=99, weight=1):
+def get_top1_ans(dict_score, folder, df, fr=0, to=1, weight=1):
     list_epochs = list(range(fr, to+1))
     for epoch in list_epochs:
         folder_epoch_json = "{}/epoch_{}/vqa_OpenEnded_mscoco_test2015_model_results.json".format(
@@ -229,7 +229,7 @@ def get_ans(dict_score, folder, df, fr=79, to=99, weight=1):
             row_info = get_info(df, question_id)
             file_id = row_info["file_id"]
             file_id = path_utils.get_filename_without_extension(file_id)
-            for a in range(1, 4):
+            for a in range(1,2):
                 ans = data[q]['answer{}'.format(a)]
 
                 if not keys_exists(dict_score, file_id):
