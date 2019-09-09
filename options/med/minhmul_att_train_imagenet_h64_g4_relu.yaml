@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/med/bilinear_att_train_h64_g8_relu
+    dir_logs: logs/med/minhmul_att_train_imagenet_h64_g4_relu
 vqa:
     dataset: VQA
     dir: data/vqa_med
@@ -16,7 +16,7 @@ coco:
     mode: att
     size: 448
 model:
-    arch: BilinearAtt
+    arch: MinhmulAtt
     dim_v: 2048
     dim_q: 2400
     seq2vec:
@@ -26,7 +26,7 @@ model:
         dropout: 0.25
         fixed_emb: False
     attention:
-        nb_glimpses: 8
+        nb_glimpses: 4
         dim_h: 64
         dropout_v: 0.5
         dropout_q: 0.5
@@ -45,5 +45,5 @@ model:
         dropout: 0.5
 optim:
     lr: 0.0001
-    batch_size: 128
+    batch_size: 256
     epochs: 100

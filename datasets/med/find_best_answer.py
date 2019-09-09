@@ -19,7 +19,8 @@ PROCESSED_QA_PER_QUESTION_PATH = RAW_DIR + "med_qa_per_question.csv"
 TEST_DIR = PROJECT_DIR + \
     "/data/raw/vqa_med/VQAMed2019Test/VQAMed2019_Test_ImageList.txt"
 
-TEST_GT = "/data/raw/vqa_med/VQAMed2019Test/VQAMed2019_Test_Questions_w_Ref_Answers.txt"
+TEST_GT = PROJECT_DIR + \
+    "/data/raw/vqa_med/VQAMed2019Test/VQAMed2019_Test_Questions_w_Ref_Answers.txt"
 
 SUB_DIR = PROJECT_DIR + "/data/vqa_med/submission/"
 path_utils.make_dir(SUB_DIR)
@@ -105,11 +106,11 @@ SUB_ALL = [
 ]
 
 SUB_BEST = [
-    "minhmul_att_trainval_imagenet_relu",
-    "minhmul_att_trainval_imagenet_h200_g8_relu",
-    "minhmul_att_trainval_imagenet_h200_g4_relu",
-    "minhmul_att_trainval_imagenet_h100_g8_relu",
-    "minhmul_att_trainval_imagenet_h64_g8_relu"
+    # "minhmul_att_trainval_imagenet_relu", # super-overfit
+    # "minhmul_att_trainval_imagenet_h200_g8_relu",
+    # "minhmul_att_trainval_imagenet_h200_g4_relu", # 59.6
+    # "minhmul_att_trainval_imagenet_h100_g8_relu",
+    # "minhmul_att_trainval_imagenet_h64_g8_relu" # 59.2
 ]
 
 
@@ -171,7 +172,7 @@ def keys_exists(element, *keys):
 
 def get_final_answer(dict_score, file_id):
     dict_ans_score = {}
-    for a in range(1, 6):
+    for a in range(1, 2):
         list_answer = list(dict_score[file_id]['answer{}'.format(a)].keys())
         for answer in list_answer:
             if not keys_exists(dict_ans_score, answer):
@@ -217,7 +218,7 @@ def get_ans(dict_score, folder, df, fr=79, to=99, weight=1):
     return dict_score
 
 
-def get_top1_ans(dict_score, folder, df, fr=0, to=1, weight=1):
+def get_top1_ans(dict_score, folder, df, fr=1, to=1, weight=1):
     list_epochs = list(range(fr, to+1))
     for epoch in list_epochs:
         folder_epoch_json = "{}/epoch_{}/vqa_OpenEnded_mscoco_test2015_model_results.json".format(
@@ -229,26 +230,19 @@ def get_top1_ans(dict_score, folder, df, fr=0, to=1, weight=1):
             row_info = get_info(df, question_id)
             file_id = row_info["file_id"]
             file_id = path_utils.get_filename_without_extension(file_id)
-            for a in range(1,2):
-                ans = data[q]['answer{}'.format(a)]
+            a = 1
+            ans = data[q]['answer{}'.format(a)]
+            dict_score[file_id] = {'answer{}'.format(a): {ans: 1*weight}}
 
-                if not keys_exists(dict_score, file_id):
-                    dict_score[file_id] = {'answer{}'.format(a): {ans: 1*weight}}
-                elif not keys_exists(dict_score, file_id, 'answer{}'.format(a)):
-                    dict_score[file_id]['answer{}'.format(a)] = {ans: 1*weight}
-                elif not keys_exists(dict_score, file_id, 'answer{}'.format(a), ans):
-                    dict_score[file_id]['answer{}'.format(a)][ans] = 1*weight
-                else:
-                    dict_score[file_id]['answer{}'.format(a)][ans] += 1*weight
     return dict_score    
 
 
 def main():
     folders = glob.glob(os.path.join(LOGS_DIR, "*"))
     df = pd.read_csv(PROCESSED_QA_PER_QUESTION_PATH)
-    with open(TEST_DIR, encoding='UTF-8') as f:
+    with open(TEST_GT, encoding='UTF-8') as f:
         lines = f.readlines()
-    dict_score = {}
+    list_epoch = list()
 
     for method in ["best"]:
     # for method in []:
@@ -262,20 +256,41 @@ def main():
                     method_folders.append(folder)
         method_folders = list(set(method_folders))
 
+        best_acc = 0
+
         for folder in method_folders:
             print('>> processing {} of {}'.format(folder, method))
             weight = 1 if "bert" in folder else 5
 
-            for  i in range(100):
-                dict_score = get_ans(dict_score, folder, df, weight=weight)
+            for epoch in range(1,100):
+                count = 0
+                correct = 0
 
-        f = open(sub_path, 'w')
-        for line in lines:
-            file_id = line.split('\n')[0]
-            dict_ans_score, final_answer = get_final_answer(
-                dict_score, file_id)
-            f.write('{}|{}\n'.format(file_id, final_answer))  # python will convert \n to os.linesep
-        f.close()  # you can omit in most cases as the destructor will call it
+                dict_score = {}
+                dict_score = get_top1_ans(dict_score, folder, df, weight=weight, fr=epoch, to=epoch)
+                # list_epoch.append(dict_score)
+
+                for line in lines:
+                    line = line.split("|")
+                    image, qtype, question, answer = line[0], line[1], line[2], line[3].split("\n")[0]
+                    question = question.encode('ascii', 'ignore').decode('ascii')
+                    answer = answer.encode('ascii', 'ignore').decode('ascii')
+
+                    file_id = image
+                    dict_ans_score, final_answer = get_final_answer(
+                        dict_score, file_id)
+
+                    count += 1
+                    if answer == final_answer:
+                        correct += 1
+
+                acc = round(correct/count*100,2)
+                print("Method: {} \t | Epoch: {} \t | Acc: {}".format(folder, epoch, acc))
+
+                    
+
+                    
+
 
 
 if __name__ == "__main__":
