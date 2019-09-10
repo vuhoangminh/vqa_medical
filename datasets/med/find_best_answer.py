@@ -13,7 +13,7 @@ import json
 
 CURRENT_WORKING_DIR = os.path.realpath(__file__)
 PROJECT_DIR = path_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
-LOGS_DIR = os.path.join(PROJECT_DIR, "logs/med/trainval")
+LOGS_DIR = os.path.join(PROJECT_DIR, "logs/med")
 RAW_DIR = PROJECT_DIR + "/data/vqa_med/raw/raw/"
 PROCESSED_QA_PER_QUESTION_PATH = RAW_DIR + "med_qa_per_question.csv"
 TEST_DIR = PROJECT_DIR + \
@@ -108,9 +108,13 @@ SUB_ALL = [
 SUB_BEST = [
     # "minhmul_att_trainval_imagenet_relu", # super-overfit
     # "minhmul_att_trainval_imagenet_h200_g8_relu",
-    # "minhmul_att_trainval_imagenet_h200_g4_relu", # 59.6
+    "minhmul_att_trainval_imagenet_h200_g4_relu", # 59.6
     # "minhmul_att_trainval_imagenet_h100_g8_relu",
-    # "minhmul_att_trainval_imagenet_h64_g8_relu" # 59.2
+    # "minhmul_att_trainval_imagenet_h100_g4_relu",
+    # "minhmul_att_trainval_imagenet_h64_g8_relu", # 59.2
+    # "minhmul_att_trainval_imagenet_h64_g4_relu",
+    # "minhmul_att_trainval_imagenet_h32_g8_relu",
+    # "minhmul_att_trainval_imagenet_h32_g4_relu",    
 ]
 
 
@@ -172,7 +176,7 @@ def keys_exists(element, *keys):
 
 def get_final_answer(dict_score, file_id):
     dict_ans_score = {}
-    for a in range(1, 2):
+    for a in range(1, 4):
         list_answer = list(dict_score[file_id]['answer{}'.format(a)].keys())
         for answer in list_answer:
             if not keys_exists(dict_ans_score, answer):
@@ -183,13 +187,15 @@ def get_final_answer(dict_score, file_id):
                     a)] * dict_score[file_id]['answer{}'.format(a)][answer]
 
     final_answer = ""
+    second_answer = ""
     max_value = 0
     for key, value in dict_ans_score.items():
         if value > max_value:
+            second_answer = final_answer
             final_answer = key
             max_value = value
 
-    return dict_ans_score, final_answer
+    return dict_ans_score, final_answer, second_answer
 
 
 def get_ans(dict_score, folder, df, fr=79, to=99, weight=1):
@@ -230,9 +236,17 @@ def get_top1_ans(dict_score, folder, df, fr=1, to=1, weight=1):
             row_info = get_info(df, question_id)
             file_id = row_info["file_id"]
             file_id = path_utils.get_filename_without_extension(file_id)
-            a = 1
-            ans = data[q]['answer{}'.format(a)]
-            dict_score[file_id] = {'answer{}'.format(a): {ans: 1*weight}}
+            for a in range(1, 4):
+                ans = data[q]['answer{}'.format(a)]
+
+                if not keys_exists(dict_score, file_id):
+                    dict_score[file_id] = {'answer{}'.format(a): {ans: 1*weight}}
+                elif not keys_exists(dict_score, file_id, 'answer{}'.format(a)):
+                    dict_score[file_id]['answer{}'.format(a)] = {ans: 1*weight}
+                elif not keys_exists(dict_score, file_id, 'answer{}'.format(a), ans):
+                    dict_score[file_id]['answer{}'.format(a)][ans] = 1*weight
+                else:
+                    dict_score[file_id]['answer{}'.format(a)][ans] += 1*weight
 
     return dict_score    
 
@@ -259,33 +273,45 @@ def main():
         best_acc = 0
 
         for folder in method_folders:
-            print('>> processing {} of {}'.format(folder, method))
-            weight = 1 if "bert" in folder else 5
 
-            for epoch in range(1,100):
-                count = 0
-                correct = 0
+            try:
+                print('>> processing {} of {}'.format(folder, method))
+                weight = 1 if "bert" in folder else 5
 
-                dict_score = {}
-                dict_score = get_top1_ans(dict_score, folder, df, weight=weight, fr=epoch, to=epoch)
-                # list_epoch.append(dict_score)
+                for epoch in range(1,100):
 
-                for line in lines:
-                    line = line.split("|")
-                    image, qtype, question, answer = line[0], line[1], line[2], line[3].split("\n")[0]
-                    question = question.encode('ascii', 'ignore').decode('ascii')
-                    answer = answer.encode('ascii', 'ignore').decode('ascii')
+                    count = 0
+                    correct = 0
 
-                    file_id = image
-                    dict_ans_score, final_answer = get_final_answer(
-                        dict_score, file_id)
+                    dict_score = {}
+                    # dict_score = get_top1_ans(dict_score, folder, df, weight=weight, fr=90, to=99)
+                    dict_score = get_top1_ans(dict_score, folder, df, weight=weight, fr=epoch, to=epoch)
 
-                    count += 1
-                    if answer == final_answer:
-                        correct += 1
+                    for line in lines:
+                        line = line.split("|")
+                        image, qtype, question, answer = line[0], line[1], line[2], line[3].split("\n")[0]
+                        question = question.encode('ascii', 'ignore').decode('ascii')
+                        answer = answer.encode('ascii', 'ignore').decode('ascii')
 
-                acc = round(correct/count*100,2)
-                print("Method: {} \t | Epoch: {} \t | Acc: {}".format(folder, epoch, acc))
+                        file_id = image
+                        dict_ans_score, final_answer, second_answer = get_final_answer(
+                            dict_score, file_id)
+
+                        count += 1
+                        if answer == final_answer:
+                            correct += 1
+                        # else:
+                        #     print ("{} / {}".format(answer, final_answer))
+                        # if answer == second_answer:
+                        #     correct += 1
+
+                    acc = round(correct/count*100,2)
+                    print("Method: {} \t | Epoch: {} \t | Acc: {}".format(folder, epoch, acc))
+
+                    # print("Method: {} \t | Acc: {}".format(folder, acc))
+            
+            except:
+                pass
 
                     
 

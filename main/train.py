@@ -30,17 +30,17 @@ parser = argparse.ArgumentParser(
 # yaml options file contains all default choices #
 # parser.add_argument('--path_opt', default='options/breast/default.yaml', type=str,
 #                     help='path to a yaml options file')
-parser.add_argument('--path_opt', default='options/med/minhmul_att_train_imagenet_h200_g4_relu.yaml', type=str,
+parser.add_argument('--path_opt', default='options/med/minhmul_att_trainval_imagenet_h200_g4_relu.yaml', type=str,
                     help='path to a yaml options file')
 ################################################
 # change cli options to modify default choices #
 # logs options
 parser.add_argument('--dir_logs',
-                    default='logs/med/minhmul_att_train_imagenet_h200_g4_relu',
+                    default='logs/med/minhmul_att_trainval_imagenet_h200_g4_relu',
                     type=str, help='dir logs')
 # data options
 parser.add_argument('--vqa_trainsplit', type=str,
-                    choices=['train', 'trainval'], default="train")
+                    choices=['train', 'trainval'], default="trainval")
 # model options
 parser.add_argument('--arch', choices=models.model_names,
                     help='vqa model architecture: ' +
