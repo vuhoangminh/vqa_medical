@@ -49,7 +49,7 @@ def process_df_to_build_json(df, is_augment=False):
 def main():
     print(">> read train val split")
 
-    is_augment = True
+    is_augment = False
 
     if is_augment:
         df = pd.read_csv(PROCESSED_QA_PER_QUESTION_AUGMENT_PATH)
