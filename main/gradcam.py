@@ -18,6 +18,7 @@ import os
 import vqa.models.convnets_idrid as convnets_idrid
 import vqa.models.convnets_breast as convnets_breast
 import vqa.models.convnets_tools as convnets_tools
+import vqa.models.convnets_med as convnets_med
 import vqa.models.convnets as convnets
 from vqa.datasets.vqa_processed import tokenize_mcb
 import datasets.utils.gradcam_utils as gradcam_utils
@@ -484,6 +485,9 @@ def initialize(args, dataset="breast"):
     elif dataset == "breast":
         cnn = convnets_breast.factory(
             {'arch': "resnet152_breast"}, cuda=True, data_parallel=False)
+    elif dataset == "med":
+        cnn = convnets_med.factory(
+            {'arch': "resnet152_med"}, cuda=True, data_parallel=False)            
     else:
         cnn = convnets.factory(
             {'arch': "fbresnet152"}, cuda=True, data_parallel=False)
