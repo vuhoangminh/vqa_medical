@@ -30,11 +30,11 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--vqa_model', type=str,
                     default='minhmul_noatt_train_2048')
 parser.add_argument('--dir_logs', type=str,
-                    default='logs/breast/minhmul_noatt_train_2048',
+                    default='logs/med/minhmul_noatt_train_2048',
                     help='dir logs')
 parser.add_argument('--path_opt', type=str,
                     # default='logs/vqa2/blocmutan_noatt_fbresnet152torchported_save_all/blocmutan_noatt.yaml',
-                    default='logs/breast/minhmul_noatt_train_2048/minhmul_noatt_train_2048.yaml',
+                    default='logs/med/minhmul_noatt_train_2048/minhmul_noatt_train_2048.yaml',
                     help='path to a yaml options file')
 parser.add_argument('--resume', type=str,
                     default='best',
@@ -85,9 +85,15 @@ def process_visual(path_img, cnn, vqa_model="minhmul_noatt_train_2048"):
     visual_data = torch.FloatTensor(1, 3,
                                     visual_tensor.size(1),
                                     visual_tensor.size(2))
-    visual_data[0][0] = visual_tensor[0]
-    visual_data[0][1] = visual_tensor[1]
-    visual_data[0][2] = visual_tensor[2]
+
+    if "test_med" in path_img:
+        visual_data[0][0] = visual_tensor[0]
+        visual_data[0][1] = visual_tensor[0]
+        visual_data[0][2] = visual_tensor[0]
+    else:                                    
+        visual_data[0][0] = visual_tensor[0]
+        visual_data[0][1] = visual_tensor[1]
+        visual_data[0][2] = visual_tensor[2]
     # print('visual', visual_data.size(), visual_data.mean())
 
     visual_data = visual_data.cuda(async=True)
@@ -242,6 +248,10 @@ def get_gradcam_from_image_model(path_img, cnn, dataset, finalconv_name="layer4"
     img_pil = Image.open(path_img)
 
     img_tensor = preprocess(img_pil)
+
+    if img_tensor.shape[0]==1:
+        img_tensor = img_tensor.repeat(3,1,1)
+
     img_variable = Variable(img_tensor.unsqueeze(0))
     img_variable = img_variable.cuda(async=True)
     logit = cnn(img_variable)
@@ -485,9 +495,9 @@ def initialize(args, dataset="breast"):
     elif dataset == "breast":
         cnn = convnets_breast.factory(
             {'arch': "resnet152_breast"}, cuda=True, data_parallel=False)
-    elif dataset == "med":
-        cnn = convnets_med.factory(
-            {'arch': "resnet152_med"}, cuda=True, data_parallel=False)            
+    # elif dataset == "med":
+    #     cnn = convnets_med.factory(
+    #         {'arch': "resnet152_med"}, cuda=True, data_parallel=False)            
     else:
         cnn = convnets.factory(
             {'arch': "fbresnet152"}, cuda=True, data_parallel=False)
@@ -604,6 +614,15 @@ def main(dataset="breast"):
         "is the person wearing a hat"
     ]
 
+    LIST_QUESTION_MED = [
+        "is this a t1 weighted, t2 weighted, or flair image",
+        "is this a ct scan",
+        "what plane is the image acquired in",
+        "what organ system is imaged",
+        "what type of image modality is this",
+        "what abnormality is seen in the image"
+    ]    
+
     if dataset == "breast":
         path = path_dir + "temp/test_breast/"
         list_question = LIST_QUESTION_BREAST
@@ -613,6 +632,9 @@ def main(dataset="breast"):
     elif dataset == "idrid":
         path = path_dir + "temp/test_idrid/"
         list_question = LIST_QUESTION_IDRID
+    elif dataset == "med":
+        path = path_dir + "temp/test_med/"
+        list_question = LIST_QUESTION_MED
     else:
         path = path_dir + "temp/test_vqa2/"
         list_question = LIST_QUESTION_VQA2
@@ -620,7 +642,7 @@ def main(dataset="breast"):
     img_dirs = glob.glob(os.path.join(path, ext))
 
     args = update_args(
-        args, vqa_model="minhmul_noatt_train_2048", dataset=dataset)
+        args, vqa_model="minhmul_noatt_train_h2048_relu", dataset=dataset)
     # args = update_args(
     #     args, vqa_model="minhmul_noatt_train", dataset=dataset)
 
@@ -680,7 +702,7 @@ def main(dataset="breast"):
                                            is_att=False)
 
     args = update_args(
-        args, vqa_model="minhmul_att_train_2048", dataset=dataset)
+        args, vqa_model="minhmul_att_train_imagenet_h2048_g4_relu", dataset=dataset)
     # args = update_args(
     #     args, vqa_model="mlb_att_train", dataset=dataset)
 
@@ -747,7 +769,7 @@ if __name__ == '__main__':
     # main(dataset)
     # dataset = "tools"
     # main(dataset)
-    dataset = "idrid"
+    dataset = "med"
     main(dataset)
     # dataset = "vqa2"
     # main(dataset)

@@ -26,7 +26,11 @@ import re
 import numpy as np
 
 import torch
-from torch.utils.data import TensorDataset, DataLoader, SequentialSampler
+from torch.utils.data import TensorDataset, DataLoader
+try:
+    from torch.utils.data import SequentialSampler
+except :
+    from torch.utils.data.sampler import SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 
 from vqa.external.bert.pytorch_pretrained_bert.tokenization import BertTokenizer
