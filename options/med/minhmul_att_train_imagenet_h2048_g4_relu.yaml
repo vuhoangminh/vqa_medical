@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/med/bilinear_att_train_h64_g8_relu
+    dir_logs: logs/med/minhmul_att_train_imagenet_h2048_g4
 vqa:
     dataset: VQA
     dir: data/vqa_med
@@ -16,7 +16,7 @@ coco:
     mode: att
     size: 448
 model:
-    arch: BilinearAtt
+    arch: MinhmulAtt
     dim_v: 2048
     dim_q: 2400
     seq2vec:
@@ -25,9 +25,14 @@ model:
         type: BayesianUniSkip
         dropout: 0.25
         fixed_emb: False
+    sen2vec:
+        arch: bert
+        dir_st: data/bert
+        type: BayesianUniSkip
+        dropout: 0.25
     attention:
-        nb_glimpses: 8
-        dim_h: 64
+        nb_glimpses: 4
+        dim_h: 2048
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
@@ -35,7 +40,7 @@ model:
         activation_q: relu
         activation_mm: relu
     fusion:
-        dim_h: 64
+        dim_h: 2048
         dropout_v: 0.5
         dropout_q: 0.5
         activation_v: relu

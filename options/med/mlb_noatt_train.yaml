@@ -1,5 +1,5 @@
 logs:
-    dir_logs: logs/med/bilinear_att_train_h64_g8_relu
+    dir_logs: logs/med/mlb_noatt_train
 vqa:
     dataset: VQA
     dir: data/vqa_med
@@ -13,35 +13,26 @@ vqa:
 coco:
     dir: data/raw/vqa_med/preprocessed/
     arch: fbresnet152
-    mode: att
+    mode: noatt
     size: 448
 model:
-    arch: BilinearAtt
-    dim_v: 2048
-    dim_q: 2400
+    arch: MLBNoAtt
     seq2vec:
         arch: skipthoughts
         dir_st: data/skip-thoughts
         type: BayesianUniSkip
         dropout: 0.25
         fixed_emb: False
-    attention:
-        nb_glimpses: 8
-        dim_h: 64
-        dropout_v: 0.5
-        dropout_q: 0.5
-        dropout_mm: 0.5
-        activation_v: relu
-        activation_q: relu
-        activation_mm: relu
     fusion:
-        dim_h: 64
+        dim_v: 2048
+        dim_q: 2400
+        dim_h: 1200
         dropout_v: 0.5
         dropout_q: 0.5
-        activation_v: relu
-        activation_q: relu
+        activation_v: tanh
+        activation_q: tanh
     classif:
-        activation: relu
+        activation: tanh
         dropout: 0.5
 optim:
     lr: 0.0001

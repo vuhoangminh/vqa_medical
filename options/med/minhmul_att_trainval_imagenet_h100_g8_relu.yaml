@@ -1,9 +1,9 @@
 logs:
-    dir_logs: logs/med/bilinear_att_train_h64_g8_relu
+    dir_logs: logs/med/minhmul_att_trainval_imagenet_h100_g8_relu
 vqa:
     dataset: VQA
     dir: data/vqa_med
-    trainsplit: train
+    trainsplit: trainval
     nans: 1700
     maxlength: 26
     minwcount: 0
@@ -16,7 +16,7 @@ coco:
     mode: att
     size: 448
 model:
-    arch: BilinearAtt
+    arch: MinhmulAtt
     dim_v: 2048
     dim_q: 2400
     seq2vec:
@@ -27,7 +27,7 @@ model:
         fixed_emb: False
     attention:
         nb_glimpses: 8
-        dim_h: 64
+        dim_h: 100
         dropout_v: 0.5
         dropout_q: 0.5
         dropout_mm: 0.5
@@ -35,7 +35,7 @@ model:
         activation_q: relu
         activation_mm: relu
     fusion:
-        dim_h: 64
+        dim_h: 100
         dropout_v: 0.5
         dropout_q: 0.5
         activation_v: relu

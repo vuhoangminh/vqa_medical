@@ -29,6 +29,7 @@ def get_val_acc1_from_json_old(json_path, num=20):
     return list_acc1, to
 
 
+# keep num = 20 please
 def get_val_acc1_from_json(json_path, num=20):
     with open(json_path) as f:
         data = json.load(f)
@@ -116,11 +117,18 @@ def get_info(name):
 
 
 def main():
-    for dataset in ["med"]:
-        folders = glob.glob(os.path.join(LOGS_DIR, dataset, "train", "*"))
+    for dataset in [
+        # "breast",
+        # "idrid",
+        # "tools",
+        "vqa",
+        "vqa2",
+        "med"
+    ]:
+        folders = glob.glob(os.path.join(LOGS_DIR, dataset, "*"))
         df_path = os.path.join(LOGS_DIR, dataset, 'compile.csv')
         folders = [x for x in folders if "trainval" not in x]
-        df = pd.DataFrame(columns=['name', 'method', 'image', 'question',
+        df = pd.DataFrame(columns=['name', 'dataset', 'method', 'image', 'question',
                                    'dim_h', 'nb_glimpses', 'activation', 'epoch_max', 'mean', 'std'])
         for folder in folders:
             mean, std, to = process_one_method_one_dataset(folder)
@@ -131,6 +139,7 @@ def main():
             info = get_info(path_utils.get_filename_without_extension(folder))
             # if to > 30:
             df = df.append(pd.DataFrame({'name':        [info[0]],
+                                         'dataset':     [dataset],
                                          'method':      [info[1]],
                                          'image':       [info[2]],
                                          'question':    [info[3]],
