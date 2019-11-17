@@ -251,14 +251,6 @@ def main():
 
     with experiment.train():
         for epoch in range(args.start_epoch+1, options['optim']['epochs']):
-            # if epoch > 1 and gen_utils.str2bool(args.is_augment_image) and 'options/med/' in args.path_opt:
-            #     cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 1 -b 64"
-            #     os.system(cmd)
-            # if epoch == 1 and 'options/med/' in args.path_opt:
-            #     cmd = "python main/extract.py --dir_data data/raw/vqa_med/preprocessed --dataset med --is_augment_image 0 -b 64"
-            #     os.system(cmd)
-
-            # train for one epoch
 
             engine.train(train_loader, model, criterion, optimizer,
                          exp_logger, epoch,
@@ -290,6 +282,10 @@ def main():
                     args.save_model,
                     args.save_all_from,
                     is_best)
+
+                # save results and compute OpenEnd accuracy
+                save_results(val_results, epoch, valset.split_name(),
+                             options['logs']['dir_logs'], options['vqa']['dir'])
 
             else:
                 test_results, testdev_results = engine.test(test_loader, model, exp_logger,
@@ -340,9 +336,9 @@ def save_results(results, epoch, split_name, dir_logs, dir_vqa):
     os.system('mkdir -p ' + dir_epoch)
     with open(path_rslt, 'w') as handle:
         json.dump(results, handle)
-    # if not 'test' in split_name:
-    #     os.system('python main/eval_res.py --dir_vqa {} --dir_epoch {} --subtype {} &'
-    #               .format(dir_vqa, dir_epoch, split_name))
+    if not 'test' in split_name:
+        os.system('python main/eval_res.py --dir_vqa {} --dir_epoch {} --subtype {} &'
+                  .format(dir_vqa, dir_epoch, split_name))
 
 
 def save_checkpoint(info, model, optim, dir_logs, save_model, save_all_from=None, is_best=True):
