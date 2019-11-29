@@ -291,6 +291,11 @@ def main():
                     args.save_all_from,
                     is_best)
 
+                # save results and compute OpenEnd accuracy
+                save_results(val_results, epoch, valset.split_name(),
+                             options['logs']['dir_logs'], options['vqa']['dir'])
+                             
+
             else:
                 test_results, testdev_results = engine.test(test_loader, model, exp_logger,
                                                             epoch, args.print_freq, topk=3,
