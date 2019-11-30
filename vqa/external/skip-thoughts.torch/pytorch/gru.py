@@ -141,20 +141,33 @@ class BayesianGRU(AbstractGRU):
         self.dropout = dropout
         self.gru_cell.set_dropout(dropout)
 
+    # def forward(self, x, hx=None, max_length=None):
+    #     batch_size = x.size(0)
+    #     seq_length = x.size(1)
+    #     # print(max_length)
+    #     # added by Minh - ugly hack for pytorch > 1.0.0
+    #     if max_length is None:
+    #         max_length = seq_length
+    #     elif max_length.shape[0] > 1:
+    #         max_length = max(max_length)
+    #     output = []
+    #     for i in range(max_length):
+    #         hx = self.gru_cell(x[:,i,:], hx=hx)
+    #         output.append(hx.view(batch_size, 1, self.hidden_size))
+    #     self.gru_cell.end_of_sequence()
+    #     output = torch.cat(output, 1)
+    #     return output, hx
+
     def forward(self, x, hx=None, max_length=None):
         batch_size = x.size(0)
         seq_length = x.size(1)
-        # print(max_length)
-        # added by Minh - ugly hack for pytorch > 1.0.0
         if max_length is None:
             max_length = seq_length
-        # elif max_length.shape[0] > 1:
-        #     max_length = max(max_length)
         output = []
         for i in range(max_length):
             hx = self.gru_cell(x[:,i,:], hx=hx)
             output.append(hx.view(batch_size, 1, self.hidden_size))
         self.gru_cell.end_of_sequence()
         output = torch.cat(output, 1)
-        return output, hx
+        return output, hx        
 
