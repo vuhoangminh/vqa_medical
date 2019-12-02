@@ -132,15 +132,15 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
             _, pred = output.data.cpu().max(1)
             pred.squeeze_()
 
-            question_id = sample['question_id'][j]
-            if isinstance(question_id, torch.Tensor):
-                question_id = question_id.cpu().numpy()
-
-            answer = loader.dataset.aid_to_ans[pred[j]]
-            if isinstance(answer, torch.Tensor):
-                answer = answer.cpu().numpy()
-
             for j in range(batch_size):
+                question_id = sample['question_id'][j]
+                if isinstance(question_id, torch.Tensor):
+                    question_id = question_id.cpu().numpy()
+
+                answer = loader.dataset.aid_to_ans[pred[j]]
+                if isinstance(answer, torch.Tensor):
+                    answer = answer.cpu().numpy()
+
                 results.append({'question_id': question_id,
                                 'answer': answer})
 
