@@ -135,8 +135,7 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
             for j in range(batch_size):
                 question_id = sample['question_id'][j]
                 if isinstance(question_id, torch.Tensor):
-                    question_id = question_id.cpu().numpy()
-                    print(question_id)
+                    question_id = question_id.cpu().numpy().tolist()
 
                 answer = loader.dataset.aid_to_ans[pred[j]]
                 if isinstance(answer, torch.Tensor):
