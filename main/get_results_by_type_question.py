@@ -12,12 +12,16 @@ import json
 
 CURRENT_WORKING_DIR = os.path.realpath(__file__)
 PROJECT_DIR = path_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
-RAW_DIR = PROJECT_DIR + "/data/vqa_breast/raw/raw/"
-QA_PATH = RAW_DIR + "breast_qa_full.csv"
-processed_qa_per_question_path = RAW_DIR + "breast_qa_per_question.csv"
 
 
-# keep num = 20 please
+def get_path_by_project(project):
+    RAW_DIR = PROJECT_DIR + "/data/vqa_{}/raw/raw/".format(project)
+    QA_PATH = RAW_DIR + "{}_qa_full.csv".format(project)
+    processed_qa_per_question_path = RAW_DIR + \
+        "{}_qa_per_question.csv".format(project)
+    return processed_qa_per_question_path
+
+
 def get_val_acc1_from_json(json_path, num=20):
     with open(json_path) as f:
         data = json.load(f)
@@ -34,10 +38,20 @@ def get_val_acc1_from_json(json_path, num=20):
 
 def main():
     print(">> read train val split")
+
+    project = "breast"
+    # project = "med"
+    # project = "tools"
+
+    processed_qa_per_question_path = get_path_by_project(project)
     df = pd.read_csv(processed_qa_per_question_path)
     print(df.head())
 
     print(df.question.unique())
+
+    print(len(df.question.unique()))
+
+
 
 
 if __name__ == "__main__":
