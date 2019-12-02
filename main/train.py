@@ -262,7 +262,7 @@ def main():
                 # evaluate on validation set
                 with experiment.validate():
                     acc1, val_results = engine.validate(val_loader, model, criterion,
-                                                        exp_logger, epoch, args.print_freq, topk=3
+                                                        exp_logger, epoch, args.print_freq
                                                         )
                     # this will be logged as validation accuracy based on the context.
                     experiment.log_metric("acc1", acc1)
