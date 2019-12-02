@@ -55,10 +55,10 @@ def train(loader, model, criterion, optimizer, logger, epoch, experiment, print_
         meters['loss'].update(loss.item(), n=batch_size)
 
         # measure accuracy
-        acc1, acc2 = utils.accuracy(
-            output.data, target_answer.data, topk=(1, 2))
+        acc1, acc5 = utils.accuracy(
+            output.data, target_answer.data, topk=(1, 5))
         meters['acc1'].update(acc1.item(), n=batch_size)
-        meters['acc2'].update(acc2.item(), n=batch_size)
+        meters['acc5'].update(acc5.item(), n=batch_size)
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -87,10 +87,10 @@ def train(loader, model, criterion, optimizer, logger, epoch, experiment, print_
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                   #   'Bleu {bleu_batch:.4f} \t'
                   'Acc@1 {acc1.val:.3f} ({acc1.avg:.3f})\t'
-                  'Acc@2 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
+                  'Acc@2 {acc5.val:.3f} ({acc5.avg:.3f})'.format(
                       epoch, i, len(loader),
                       #   bleu_batch=bleu_batch*100,
-                      loss=meters['loss'], acc1=meters['acc1'], acc2=meters['acc2']))
+                      loss=meters['loss'], acc1=meters['acc1'], acc5=meters['acc5']))
 
             # Log to Comet.ml
             experiment.log_metric("batch_acc1", meters['acc1'].avg)
@@ -153,14 +153,14 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
                       'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
                       #   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
                       'Acc@1 {acc1.val:.3f} ({acc1.avg:.3f})\t'
-                      'Acc@2 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
+                      'Acc@2 {acc5.val:.3f} ({acc5.avg:.3f})'.format(
                           i, len(loader), batch_time=meters['batch_time'],
                           data_time=meters['data_time'],
                           #    loss=meters['loss'],
-                          acc1=meters['acc1'], acc2=meters['acc2']))
+                          acc1=meters['acc1'], acc5=meters['acc5']))
 
-    print(' * Acc@1 {acc1.avg:.3f} Acc@2 {acc2.avg:.3f}'
-          .format(acc1=meters['acc1'], acc2=meters['acc2']))
+    print(' * Acc@1 {acc1.avg:.3f} Acc@2 {acc5.avg:.3f}'
+          .format(acc1=meters['acc1'], acc5=meters['acc5']))
 
     logger.log_meters('val', n=epoch)
     return meters['acc1'].avg, results
