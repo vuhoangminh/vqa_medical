@@ -94,7 +94,7 @@ def train(loader, model, criterion, optimizer, logger, epoch, experiment, print_
 
             # Log to Comet.ml
             experiment.log_metric("batch_acc1", meters['acc1'].avg)
-            
+
     # Log to Comet.ml
     experiment.log_metric("acc1", meters['acc1'].avg)
     logger.log_meters('train', n=epoch)
@@ -108,43 +108,56 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
     meters = logger.reset_meters('val')
 
     end = time.time()
-    for i, sample in enumerate(loader):
-        batch_size = sample['visual'].size(0)
-        input_visual   = Variable(sample['visual'].cuda(async=True), volatile=True)
-        input_question = Variable(sample['question'].cuda(async=True), volatile=True)
-        target_answer  = Variable(sample['answer'].cuda(async=True), volatile=True)
 
-        # compute output
-        output = model(input_visual, input_question)
-        # loss = criterion(output, target_answer)
-        # meters['loss'].update(loss.item(), n=batch_size)
+    with torch.no_grad():
+        for i, sample in enumerate(loader):
+            batch_size = sample['visual'].size(0)
 
-        # measure accuracy and record loss
-        acc1, acc2 = utils.accuracy(output.data, target_answer.data, topk=(1, 2))
-        meters['acc1'].update(acc1.item(), n=batch_size)
-        meters['acc2'].update(acc2.item(), n=batch_size)
+            input_visual = sample['visual'].cuda()
+            input_question = sample['question'].cuda()
+            target_answer = sample['answer'].cuda()
 
-        # compute predictions for OpenEnded accuracy
-        _, pred = output.data.cpu().max(1)
-        pred.squeeze_()
-        for j in range(batch_size):
-            results.append({'question_id': sample['question_id'][j],
-                            'answer': loader.dataset.aid_to_ans[pred[j]]})
+            # compute output
+            output = model(input_visual, input_question)
+            # loss = criterion(output, target_answer)
+            # meters['loss'].update(loss.item(), n=batch_size)
 
-        # measure elapsed time
-        meters['batch_time'].update(time.time() - end, n=batch_size)
-        end = time.time()
+            # measure accuracy and record loss
+            acc1, acc5 = utils.accuracy(
+                output.data, target_answer.data, topk=(1, 5))
+            meters['acc1'].update(acc1.item(), n=batch_size)
+            meters['acc5'].update(acc5.item(), n=batch_size)
 
-        if i % print_freq == 0:
-            print('Val: [{0}/{1}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                #   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Acc@1 {acc1.val:.3f} ({acc1.avg:.3f})\t'
-                  'Acc@2 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
-                   i, len(loader), batch_time=meters['batch_time'],
-                   data_time=meters['data_time'], 
-                #    loss=meters['loss'],
-                   acc1=meters['acc1'], acc2=meters['acc2']))
+            # compute predictions for OpenEnded accuracy
+            _, pred = output.data.cpu().max(1)
+            pred.squeeze_()
+
+            question_id = sample['question_id'][j]
+            if isinstance(question_id, torch.Tensor):
+                question_id = question_id.cpu().numpy()
+
+            answer = loader.dataset.aid_to_ans[pred[j]]
+            if isinstance(answer, torch.Tensor):
+                answer = answer.cpu().numpy()
+
+            for j in range(batch_size):
+                results.append({'question_id': question_id,
+                                'answer': answer})
+
+            # measure elapsed time
+            meters['batch_time'].update(time.time() - end, n=batch_size)
+            end = time.time()
+
+            if i % print_freq == 0:
+                print('Val: [{0}/{1}]\t'
+                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                      #   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+                      'Acc@1 {acc1.val:.3f} ({acc1.avg:.3f})\t'
+                      'Acc@2 {acc2.val:.3f} ({acc2.avg:.3f})'.format(
+                          i, len(loader), batch_time=meters['batch_time'],
+                          data_time=meters['data_time'],
+                          #    loss=meters['loss'],
+                          acc1=meters['acc1'], acc2=meters['acc2']))
 
     print(' * Acc@1 {acc1.avg:.3f} Acc@2 {acc2.avg:.3f}'
           .format(acc1=meters['acc1'], acc2=meters['acc2']))
