@@ -318,7 +318,7 @@ def make_meters():
     meters_dict = {
         'loss': logger.AvgMeter(),
         'acc1': logger.AvgMeter(),
-        'acc2': logger.AvgMeter(),
+        'acc5': logger.AvgMeter(),
         'batch_time': logger.AvgMeter(),
         'data_time': logger.AvgMeter(),
         'epoch_time': logger.SumMeter()
