@@ -181,7 +181,7 @@ def main():
     results = dict()
 
     # for project in ["breast", "med", "tools"]:
-    for project in ["med", "tools"]:
+    for project in ["med"]:
 
         results_project = dict()
 
@@ -194,16 +194,17 @@ def main():
         elif project == "tools":
             from_epoch, to_epoch = 10, 20
 
-        for model in ["mutan_noatt_train",
-                      "mlb_noatt_train",
-                      "mutan_att_train",
-                      "mlb_att_train",
-                      "bilinear_att_train_h64_g8_relu",
-                      "minhmul_noatt_train",
-                      "minhmul_att_train",
-                      "minhmul_noatt_train_relu",
-                      "minhmul_att_train_relu"
-                      ]:
+        for model in [
+            # "mutan_noatt_train",
+            # "mlb_noatt_train",
+            # "mutan_att_train",
+            # "mlb_att_train",
+            "bilinear_att_train_h64_g8_relu",
+            # "minhmul_noatt_train",
+            # "minhmul_att_train",
+            # "minhmul_noatt_train_relu",
+            # "minhmul_att_train_relu"
+        ]:
 
             print("="*60)
             print("model:", model)
