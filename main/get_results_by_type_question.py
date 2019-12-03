@@ -149,9 +149,9 @@ def compute_mean_std_per_type_per_project(project, path, from_epoch, to_epoch):
         try:
             accuracy_per_type_per_epoch = get_accuracy_per_type_per_epoch(
                 project, df, path, epoch)
+            results.append(accuracy_per_type_per_epoch)
         except:
             print("ignore epoch", epoch)
-        results.append(accuracy_per_type_per_epoch)
 
         gc.collect()
 
@@ -180,8 +180,8 @@ def main():
 
     results = dict()
 
-    for project in ["breast", "med", "tools"]:
-    # for project in ["tools"]:
+    # for project in ["breast", "med", "tools"]:
+    for project in ["med", "tools"]:
 
         results_project = dict()
 
