@@ -12,10 +12,43 @@ import re
 import unidecode
 import math
 import gc
+import statistics
 
 
 CURRENT_WORKING_DIR = os.path.realpath(__file__)
 PROJECT_DIR = path_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
+
+
+breast_proportion = [96.62,
+                     3.37,
+                     1.01]
+
+
+tools_proportion = [98.91,
+                    0.22,
+                    0.87]
+
+
+med_proportion = [25,
+                  25,
+                  25,
+                  25]
+
+
+vqa_proportion = [38.37,
+                  12.31,
+                  49.32]
+
+
+model_list = ["mutan_noatt_train",
+              "mlb_noatt_train",
+              "mutan_att_train",
+              "mlb_att_train",
+              "bilinear_att_train_h64_g8_relu",
+              "minhmul_noatt_train",
+              "minhmul_att_train",
+              "minhmul_noatt_train_relu",
+              "minhmul_att_train_relu"]
 
 
 def get_path_by_project(project):
@@ -175,14 +208,10 @@ def compute_mean_std_per_type_per_project(project, path, from_epoch, to_epoch):
         return [yesno_list, number_list, position_list]
 
 
-def main():
-    print(">> read train val split")
-
+def generate_json():
     results = dict()
 
-    # for project in ["breast", "med", "tools"]:
-    for project in ["med"]:
-
+    for project in ["breast", "med", "tools"]:
         results_project = dict()
 
         if project == "med":
@@ -194,17 +223,7 @@ def main():
         elif project == "tools":
             from_epoch, to_epoch = 10, 20
 
-        for model in [
-            # "mutan_noatt_train",
-            # "mlb_noatt_train",
-            # "mutan_att_train",
-            # "mlb_att_train",
-            "bilinear_att_train_h64_g8_relu",
-            # "minhmul_noatt_train",
-            # "minhmul_att_train",
-            # "minhmul_noatt_train_relu",
-            # "minhmul_att_train_relu"
-        ]:
+        for model in model_list:
 
             print("="*60)
             print("model:", model)
@@ -224,6 +243,70 @@ def main():
 
         with open('results.json', 'w+') as outfile:
             json.dump(results, outfile)
+
+
+def get_proportion_by_project(project):
+    if project == "breast":
+        return breast_proportion
+    elif project == "tools":
+        return tools_proportion
+    elif project == "med":
+        return med_proportion
+    else:
+        return vqa_proportion
+
+
+def get_mean_se_per_project_per_model(df, results, project, model, proportion):
+    type_accuracy = results[project][model]
+
+    loc = df.loc[df['model'] == model].index.values
+    row = df.iloc[loc[0]]
+    accuracy = row[project]
+
+    if project in ["breast", "tools", "vqa", "vqa2"]:
+        num_type_question = 3
+    else:
+        num_type_question = 4
+
+    accuracy_dummy = 0
+    for i_type in range(num_type_question):
+        accuracy_dummy = accuracy_dummy + \
+            statistics.mean(type_accuracy[i_type])*proportion[i_type]/100
+
+    print("{} - {}".format(project, model))
+
+    for i_type in range(num_type_question):
+        i_mean = statistics.mean(type_accuracy[i_type])
+        i_se = round(statistics.stdev(
+            type_accuracy[i_type])/math.sqrt(21)*100, 2)
+
+        i_mean = round(i_mean * accuracy/accuracy_dummy, 2)
+
+        print("{} ({})".format(i_mean, i_se))
+
+
+def generate_mean_se():
+    if not os.path.exists("results.json"):
+        generate_json()
+    else:
+        with open('results.json') as json_file:
+            results = json.load(json_file)
+
+        xls = pd.ExcelFile('tmi_vqa_2019.xlsx')
+        df = pd.read_excel(xls, 'overall')
+
+        # print(results)
+        # for project in ["breast", "med", "tools"]:
+        for project in ["tools"]:
+            proportion = get_proportion_by_project(project)
+            for model in model_list:
+                get_mean_se_per_project_per_model(
+                    df, results, project, model, proportion)
+
+
+def main():
+
+    generate_mean_se()
 
 
 if __name__ == "__main__":
