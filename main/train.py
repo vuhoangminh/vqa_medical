@@ -262,7 +262,7 @@ def main():
                 # evaluate on validation set
                 with experiment.validate():
                     acc1, val_results = engine.validate(val_loader, model, criterion,
-                                                        exp_logger, epoch, args.print_freq, topk=3
+                                                        exp_logger, epoch, args.print_freq
                                                         )
                     # this will be logged as validation accuracy based on the context.
                     experiment.log_metric("acc1", acc1)
@@ -318,7 +318,7 @@ def make_meters():
     meters_dict = {
         'loss': logger.AvgMeter(),
         'acc1': logger.AvgMeter(),
-        'acc2': logger.AvgMeter(),
+        'acc5': logger.AvgMeter(),
         'batch_time': logger.AvgMeter(),
         'data_time': logger.AvgMeter(),
         'epoch_time': logger.SumMeter()
@@ -336,9 +336,9 @@ def save_results(results, epoch, split_name, dir_logs, dir_vqa):
     os.system('mkdir -p ' + dir_epoch)
     with open(path_rslt, 'w') as handle:
         json.dump(results, handle)
-    # if not 'test' in split_name:
-    #     os.system('python main/eval_res.py --dir_vqa {} --dir_epoch {} --subtype {} &'
-    #               .format(dir_vqa, dir_epoch, split_name))
+    if not 'test' in split_name:
+        os.system('python main/eval_res.py --dir_vqa {} --dir_epoch {} --subtype {} &'
+                  .format(dir_vqa, dir_epoch, split_name))
 
 
 def save_checkpoint(info, model, optim, dir_logs, save_model, save_all_from=None, is_best=True):
