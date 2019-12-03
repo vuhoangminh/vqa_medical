@@ -113,14 +113,15 @@ def validate(loader, model, criterion, logger, epoch=0, print_freq=2):
         for i, sample in enumerate(loader):
             batch_size = sample['visual'].size(0)
 
-            input_visual = sample['visual'].cuda()
-            input_question = sample['question'].cuda()
-            target_answer = sample['answer'].cuda()
+            input_question = Variable(sample['question'])
+            input_visual = Variable(sample['visual'])
+            target_answer = Variable(sample['answer'].cuda())
 
             # compute output
-            output = model(input_visual, input_question)
-            # loss = criterion(output, target_answer)
-            # meters['loss'].update(loss.item(), n=batch_size)
+            try:
+                output, hidden = model(input_visual, input_question)
+            except:
+                output = model(input_visual, input_question)
 
             # measure accuracy and record loss
             acc1, acc5 = utils.accuracy(

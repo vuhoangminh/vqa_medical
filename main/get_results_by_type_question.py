@@ -11,6 +11,7 @@ import json
 import re
 import unidecode
 import math
+import gc
 
 
 CURRENT_WORKING_DIR = os.path.realpath(__file__)
@@ -54,20 +55,20 @@ def get_question_by_type_med(input):
 
 def get_question_by_type_tools(input):
     if "how many" in input:
-        return 2
-    elif "which tool" in input:
-        return 3
-    else:
         return 1
+    elif "which tool" in input:
+        return 2
+    else:
+        return 0
 
 
 def get_question_by_type_breast(input):
     if "how many" in input:
-        return 2
-    elif "what is the" in input:
-        return 3
-    else:
         return 1
+    elif "what is the" in input:
+        return 2
+    else:
+        return 0
 
 
 def get_question_type(df, question_id):
@@ -79,34 +80,51 @@ def compute_accuracy_per_epoch(project, results_json, df):
     if project == "med":
         score = [0 for i in range(4)]
         count = [0 for i in range(4)]
+        threshold = 2000
     elif project == "breast":
         score = [0 for i in range(3)]
         count = [0 for i in range(3)]
+        threshold = 50000
+        # threshold = 1000
     elif project == "tools":
         score = [0 for i in range(3)]
         count = [0 for i in range(3)]
+        threshold = 80000
+        # threshold = 1000
 
     for i_result in range(len(results_json)):
 
-        if i_result > 0 and i_result % 10000 == 0:
-            print("process {}/{}".format(i_result, len(results_json)))
-            print(score)
+        if i_result < threshold:
 
-        case = results_json[i_result]
-        pred = case["answer1"]
-        question_id = int(case["question_id"])
-        loc = df.loc[df['question_id'] == question_id].index.values
-        row = df.iloc[loc[0]]
-        question = row["question"]
-        ans = row["answer"]
+            # if i_result > 0 and i_result % 10000 == 0:
+            #     print("process {}/{}".format(i_result, len(results_json)))
+            #     print(score), print(count)
 
-        question_type = get_question_by_type_tools(question)
+            case = results_json[i_result]
+            pred = case["answer1"]
+            question_id = int(case["question_id"])
+            loc = df.loc[df['question_id'] == question_id].index.values
+            row = df.iloc[loc[0]]
+            question = row["question"]
+            ans = row["answer"]
 
-        if ans == pred:
-            score[question_type] = score[question_type] + 1
-        count[question_type] = count[question_type] + 1
+            if project == "tools":
+                question_type = get_question_by_type_tools(question)
+            elif project == "breast":
+                question_type = get_question_by_type_breast(question)
+            elif project == "med":
+                question_type = get_question_by_type_med(question)
+
+            if ans == pred:
+                score[question_type] = score[question_type] + 1
+
+            count[question_type] = count[question_type] + 1
 
     accuracy_per_type = [i / j for i, j in zip(score, count)]
+
+    print("score:", score)
+    print("count:", count)
+    print("accuracy_per_type:", accuracy_per_type)
 
     return accuracy_per_type
 
@@ -117,9 +135,8 @@ def get_accuracy_per_type_per_epoch(project, df, path, epoch):
     with open(json_path) as f:
         results_json = json.load(f)
 
-    print("="*30)
-    print("processing epoch", epoch)
-    print("="*30)
+    print("-"*30)
+    print(">> epoch", epoch)
     return compute_accuracy_per_epoch(project, results_json, df)
 
 
@@ -128,9 +145,15 @@ def compute_mean_std_per_type_per_project(project, path, from_epoch, to_epoch):
     df = pd.read_csv(processed_qa_per_question_path)
 
     results = list()
-    for epoch in range(from_epoch, to_epoch, 1):    
-        accuracy_per_type_per_epoch = get_accuracy_per_type_per_epoch(project, df, path, epoch)
+    for epoch in range(from_epoch, to_epoch, 1):
+        try:
+            accuracy_per_type_per_epoch = get_accuracy_per_type_per_epoch(
+                project, df, path, epoch)
+        except:
+            print("ignore epoch", epoch)
         results.append(accuracy_per_type_per_epoch)
+
+        gc.collect()
 
     if project == "med":
         modality_list = [item[0] for item in results]
@@ -155,13 +178,51 @@ def compute_mean_std_per_type_per_project(project, path, from_epoch, to_epoch):
 def main():
     print(">> read train val split")
 
-    project = "breast"
-    # project = "med"
-    # project = "tools"
+    results = dict()
 
-    path = "{}/{}".format(PROJECT_DIR + project)
+    for project in ["breast", "med", "tools"]:
+    # for project in ["tools"]:
 
-    compute_mean_std_per_type_per_project(project, path, from_epoch=10, to_epoch=20)
+        results_project = dict()
+
+        if project == "med":
+            from_epoch, to_epoch = 50, 70
+
+        elif project == "breast":
+            from_epoch, to_epoch = 10, 20
+
+        elif project == "tools":
+            from_epoch, to_epoch = 10, 20
+
+        for model in ["mutan_noatt_train",
+                      "mlb_noatt_train",
+                      "mutan_att_train",
+                      "mlb_att_train",
+                      "bilinear_att_train_h64_g8_relu",
+                      "minhmul_noatt_train",
+                      "minhmul_att_train",
+                      "minhmul_noatt_train_relu",
+                      "minhmul_att_train_relu"
+                      ]:
+
+            print("="*60)
+            print("model:", model)
+
+            path = "{}/logs/{}/{}".format(PROJECT_DIR, project, model)
+
+            results_model = compute_mean_std_per_type_per_project(project, path,
+                                                                  from_epoch=from_epoch,
+                                                                  to_epoch=to_epoch)
+
+            results_project[model] = results_model
+
+            with open('results_project.json', 'w+') as outfile:
+                json.dump(results_project, outfile)
+
+        results[project] = results_project
+
+        with open('results.json', 'w+') as outfile:
+            json.dump(results, outfile)
 
 
 if __name__ == "__main__":
