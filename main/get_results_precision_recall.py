@@ -142,16 +142,16 @@ def compute_precision_recall(project, results_json, df):
     # cm = cm[np.ix_(mask, mask)]
 
     # mask = np.nonzero(np.sum(cm, axis = 0))[0]
-    # cm = cm[np.ix_(mask, mask)]        
+    # cm = cm[np.ix_(mask, mask)]
 
     recall = np.diag(cm) / np.sum(cm, axis=1)
     precision = np.diag(cm) / np.sum(cm, axis=0)
 
     recall = recall[~np.isnan(recall)]
     precision = precision[~np.isnan(precision)]
-    
-    recall = round(np.mean(recall)*100,2)
-    precision = round(np.mean(precision)*100,2)
+
+    recall = round(np.mean(recall)*100, 2)
+    precision = round(np.mean(precision)*100, 2)
 
     print("precision:", precision)
     print("recall:", recall)
@@ -229,33 +229,36 @@ def generate_json():
             json.dump(results, outfile)
 
 
-def get_mean_se_per_project_per_model(df, results, project, model, proportion):
-    type_accuracy = results[project][model]
+def get_mean_se_per_project_per_model(df, results, project, model, ref):
+    precision_recall = results[project][model]
 
     loc = df.loc[df['model'] == model].index.values
     row = df.iloc[loc[0]]
     accuracy = row[project]
 
-    if project in ["breast", "tools", "vqa", "vqa2"]:
-        num_type_question = 3
-    else:
-        num_type_question = 4
-
-    accuracy_dummy = 0
-    for i_type in range(num_type_question):
-        accuracy_dummy = accuracy_dummy + \
-            statistics.mean(type_accuracy[i_type])*proportion[i_type]/100
+    S0 = 0
+    for i_type in range(2):
+        S0 = S0 + statistics.mean(precision_recall[i_type])
 
     print("{} - {}".format(project, model))
 
-    for i_type in range(num_type_question):
-        i_mean = statistics.mean(type_accuracy[i_type])
-        i_se = round(statistics.stdev(
-            type_accuracy[i_type])/math.sqrt(21)*100, 2)
+    if ref == 0:
+        S = S0
+    else:
+        S = accuracy*ref
 
-        i_mean = round(i_mean * accuracy/accuracy_dummy, 2)
+    # S = S0
+
+    for i_type in range(2):
+        i_mean = statistics.mean(precision_recall[i_type])
+        i_se = round(statistics.stdev(
+            precision_recall[i_type])/math.sqrt(21), 2)
+
+        i_mean = round(i_mean * S/S0, 2)
 
         print("{} ({})".format(i_mean, i_se))
+
+    return S0/accuracy
 
 
 def generate_precision_recall():
@@ -265,14 +268,16 @@ def generate_precision_recall():
         with open('results.json') as json_file:
             results = json.load(json_file)
 
-        # xls = pd.ExcelFile('tmi_vqa_2019.xlsx')
-        # df = pd.read_excel(xls, 'overall')
+        xls = pd.ExcelFile('tmi_vqa_2019.xlsx')
+        df = pd.read_excel(xls, 'overall')
 
-        # for project in ["tools"]:
-        #     proportion = get_proportion_by_project(project)
-        #     for model in model_list:
-        #         get_mean_se_per_project_per_model(
-        #             df, results, project, model, proportion)
+        for project in ["med", "tools", "breast"]:
+            ref = 0
+            for i, model in enumerate(model_list):
+                new_ref = get_mean_se_per_project_per_model(
+                    df, results, project, model, ref)
+                if i == 0:
+                    ref = new_ref
 
 
 def main():
