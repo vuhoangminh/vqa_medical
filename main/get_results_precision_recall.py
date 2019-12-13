@@ -97,6 +97,8 @@ def compute_precision_recall(project, results_json, df):
         threshold = 50000
     elif project == "tools":
         threshold = 80000
+    else:
+        threshold = 100000
 
     y_labels = list()
     y_predictions = list()
@@ -105,7 +107,10 @@ def compute_precision_recall(project, results_json, df):
 
         if i_result < threshold:
             case = results_json[i_result]
-            pred = case["answer1"]
+            try:
+                pred = case["answer1"]
+            except:
+                pred = case["answer"]
             question_id = int(case["question_id"])
             loc = df.loc[df['question_id'] == question_id].index.values
             row = df.iloc[loc[0]]
@@ -172,9 +177,27 @@ def compute_precision_recall_per_epoch(project, df, path, epoch):
     return precision, recall
 
 
-def compute_precision_recall_per_project(project, path, from_epoch, to_epoch):
-    processed_qa_per_question_path = get_path_by_project(project)
-    df = pd.read_csv(processed_qa_per_question_path)
+def compute_precision_recall_per_project(project, path, from_epoch, to_epoch, is_natural=False):
+
+    if "vqa" in project:
+        val_questions_annotations_path = PROJECT_DIR + \
+            "/data/{}/interim/val_questions_annotations.json".format(project)
+        with open(val_questions_annotations_path) as json_file:
+            val_questions_annotations = json.load(json_file)
+        question_id_list = list()
+        question_list = list()
+        answer_list = list()
+        for item in val_questions_annotations:
+            question_id_list.append(item["question_id"])
+            question_list.append(item["question"])
+            answer_list.append(item["answer"])
+        data = {'question_id': question_id_list,
+                'question': question_list,
+                'answer': answer_list}
+        df = pd.DataFrame.from_dict(data)
+    else:
+        processed_qa_per_question_path = get_path_by_project(project)
+        df = pd.read_csv(processed_qa_per_question_path)
 
     results = list()
     for epoch in range(from_epoch, to_epoch, 1):
@@ -206,6 +229,36 @@ def generate_json():
 
         elif project == "tools":
             from_epoch, to_epoch = 10, 20
+
+        for model in model_list:
+
+            print("="*60)
+            print("model:", model)
+
+            path = "{}/logs/{}/{}".format(PROJECT_DIR, project, model)
+
+            results_model = compute_precision_recall_per_project(project, path,
+                                                                 from_epoch=from_epoch,
+                                                                 to_epoch=to_epoch)
+
+            results_project[model] = results_model
+
+            with open('results_project.json', 'w+') as outfile:
+                json.dump(results_project, outfile)
+
+        results[project] = results_project
+
+        with open('results.json', 'w+') as outfile:
+            json.dump(results, outfile)
+
+
+def generate_json_vqa():
+    results = dict()
+
+    for project in ["vqa"]:
+        results_project = dict()
+
+        from_epoch, to_epoch = 25, 35
 
         for model in model_list:
 
@@ -280,9 +333,28 @@ def generate_precision_recall():
                     ref = new_ref
 
 
-def main():
+def generate_precision_recall_vqa():
+    if not os.path.exists("results_vqa.json"):
+        generate_json_vqa()
+    else:
+        with open('results_vqa.json') as json_file:
+            results = json.load(json_file)
 
-    generate_precision_recall()
+        xls = pd.ExcelFile('tmi_vqa_2019.xlsx')
+        df = pd.read_excel(xls, 'overall')
+
+        for project in ["vqa"]:
+            ref = 0
+            for i, model in enumerate(model_list):
+                new_ref = get_mean_se_per_project_per_model(
+                    df, results, project, model, ref)
+                if i == 0:
+                    ref = new_ref
+
+
+def main():
+    # generate_precision_recall()
+    generate_precision_recall_vqa()
 
 
 if __name__ == "__main__":
