@@ -24,12 +24,13 @@ PROJECT_DIR = path_utils.get_project_dir(CURRENT_WORKING_DIR, "vqa_idrid")
 model_list = ["mutan_noatt_train",
               "mlb_noatt_train",
               "mutan_att_train",
-              "mlb_att_train",
+            #   "mlb_att_train",
               "bilinear_att_train_h64_g8_relu",
               "minhmul_noatt_train",
               "minhmul_att_train",
               "minhmul_noatt_train_relu",
-              "minhmul_att_train_relu"]
+            #   "minhmul_att_train_relu"
+              ]
 
 
 def get_path_by_project(project):
