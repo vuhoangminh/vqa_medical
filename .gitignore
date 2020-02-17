@@ -23,6 +23,7 @@
 !image_*.txt
 !train.txt
 !val.txt
+!TMI_2019_full.csv
 *.npz
 *.pkl
 logs/*

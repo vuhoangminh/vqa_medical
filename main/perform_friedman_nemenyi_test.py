@@ -243,33 +243,15 @@ def wilcoxon_test(x, Y, zero_method="zsplit", correction=False):
     return statistics, p_values
 
 
-def extract_mean(txt):
-    return float(txt.split()[0])
-
-
 def main():
-    df = pd.read_csv("C:/Users/minhm/Documents/GitHub/vqa_idrid/data/TMI_2019.csv")
+    df = pd.read_csv("/home/minhvu/github/vqa_idrid/data/TMI_2019_full.csv")
     # print(df.head())
-    df_data = df.iloc[:,1:]
-    data = df_data.values
-    # print(data[0][0], type(data[0][0]))
-
-    X = np.zeros((22, 9))
-
-    for i in range(22):
-        for j in range(9):
-            X[i,j] = extract_mean(data[i][j])
-
-    print(X)
+    df_data = df.iloc[:, :]
+    X = df_data.values
 
     y = nemenyi_test(X, p_value=0.05, return_ranks=True, return_critval=True)
 
     print(y[0])
-    print(y[1])
-
-
-
-
 
 
 if __name__ == "__main__":
