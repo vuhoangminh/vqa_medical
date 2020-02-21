@@ -181,21 +181,30 @@ def nemenyi_test(X, p_value=0.05, return_ranks=False, return_critval=False):
     CD = crit_val * np.sqrt(num_models * (num_models +
                                           1) / (6.0 * num_datasets))
 
-    sign = np.zeros((num_models, num_models), dtype=np.bool)
+    sign = np.zeros((num_models, num_models))
+
+    sign_bool = np.zeros((num_models, num_models))
     for j1 in range(num_models):
         for j2 in range(num_models):
-            sign[j1, j2] = np.abs(np.mean(R[:, j1] - R[:, j2])) > CD
+            if np.abs(np.mean(R[:, j1] - R[:, j2])) > CD:
+                sign[j1, j2] = 1
+            else:
+                sign[j1, j2] = 0
+            if np.mean(R[:, j1] - R[:, j2]) > 0:
+                sign_bool[j1, j2] = 1
+            else:
+                sign_bool[j1, j2] = -1
 
     if return_ranks:
         if return_critval:
-            return sign, R, CD
+            return sign, R, CD, sign_bool
         else:
-            return sign, R
+            return sign, R, sign_bool
     else:
         if return_critval:
-            return sign, CD
+            return sign, CD, sign_bool
         else:
-            return sign
+            return sign, sign_bool
 
 
 def wilcoxon_test(x, Y, zero_method="zsplit", correction=False):
@@ -244,14 +253,20 @@ def wilcoxon_test(x, Y, zero_method="zsplit", correction=False):
 
 
 def main():
-    df = pd.read_csv("/home/minhvu/github/vqa_idrid/data/TMI_2019_full.csv")
+    # "C:/Users/minhm/Documents/GitHub/vqa_idrid/data"
+    # df = pd.read_csv("/home/minhvu/github/vqa_idrid/data/TMI_2019_full.csv")
+    df = pd.read_csv("C:/Users/minhm/Documents/GitHub/vqa_idrid/data/TMI_2019_full.csv")
     # print(df.head())
     df_data = df.iloc[:, :]
     X = df_data.values
 
-    y = nemenyi_test(X, p_value=0.05, return_ranks=True, return_critval=True)
+    y = nemenyi_test(X, p_value=0.05, return_ranks=False, return_critval=False)
 
-    print(y[0])
+    # print(y[0])
+
+    # print(y[1])
+
+    print(np.multiply(y[0], y[1]))
 
 
 if __name__ == "__main__":
