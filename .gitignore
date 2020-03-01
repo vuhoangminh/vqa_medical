@@ -8,7 +8,7 @@
 *.pickle
 *.hdf5
 *.xml
-*.png
+# *.png
 *.xlsx
 *.tif
 *.svs
@@ -24,6 +24,8 @@
 !train.txt
 !val.txt
 !TMI_2019_full.csv
+vqa/
+temp/
 *.npz
 *.pkl
 logs/*
