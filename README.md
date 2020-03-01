@@ -83,7 +83,7 @@ As you can see in the illustration bellow, two different triplets (but same imag
 
 <p  align="center">
 
-<img  src="https://raw.githubusercontent.com/Cadene/vqa.pytorch/master/doc/vqa_task.png"  width="600"/>
+<img  src="https://github.com/vuhoangminh/vqa_medical/blob/master/images/examples.PNG"  width="600"/>
 
 </p>
 
