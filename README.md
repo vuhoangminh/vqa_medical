@@ -82,9 +82,7 @@ As you can see in the illustration bellow, two different triplets (but same imag
   
 
 <p  align="center">
-
-<img  src="https://github.com/vuhoangminh/vqa_medical/blob/master/images/examples.PNG"/>
-
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/examples.PNG"/>
 </p>
 
   
@@ -112,23 +110,15 @@ The VQA community developped an approach based on four learnable components:
   
 
 <p  align="center">
-
-<img  src="https://raw.githubusercontent.com/Cadene/vqa.pytorch/master/doc/mutan.png"  width="400"/>
-
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/TMI-VQA-19-comparison.pdf"/>
 </p>
 
   
 
 One of our claim is that the multimodal fusion between the image and the question representations is a critical component. Thus, our proposed model uses a Tucker Decomposition of the correlation Tensor to model richer multimodal interactions in order to provide proper answers. Our best model is based on :
-
-  
-
 - a pretrained Skipthoughts for the question model,
-
 - features from a pretrained Resnet-152 (with images of size 3x448x448) for the image model,
-
 - our proposed Mutan (based on a Tucker Decomposition) for the fusion scheme,
-
 - an attention scheme with two "glimpses".
 
   
