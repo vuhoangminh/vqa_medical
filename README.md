@@ -110,9 +110,36 @@ The VQA community developped an approach based on four learnable components:
   
 
 <p  align="center">
-<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/TMI-VQA-19-comparison.pdf"/>
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/TMI-VQA-19-comparison.png"/>
 </p>
 
+<p  align="center">
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/grad-cam-natural.PNG"/>
+</p>
+
+<p  align="center">
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/grad-cam.PNG"/>
+</p>
+
+<p  align="center">
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/MICCAI-VQA-19-new.png"/>
+</p>
+
+<p  align="center">
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/post-hoc-test.PNG"/>
+</p>
+
+<p  align="center">
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/qa-list.PNG"/>
+</p>
+
+<p  align="center">
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/result-acc.PNG"/>
+</p>
+
+<p  align="center">
+<img  src="https://raw.githubusercontent.com/vuhoangminh/vqa_medical/master/images/result-precision-macro.PNG"/>
+</p>
   
 
 One of our claim is that the multimodal fusion between the image and the question representations is a critical component. Thus, our proposed model uses a Tucker Decomposition of the correlation Tensor to model richer multimodal interactions in order to provide proper answers. Our best model is based on :
