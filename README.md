@@ -314,7 +314,7 @@ We currently provide four datasets:
 
   
 
-Please cite the arXiv paper if you use our work in your work:
+Please cite this paper if you use our work:
 
   
 
